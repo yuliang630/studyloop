@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""安装适配器：把钩子与技能装进**你指定的那个** agent，一个字节都不碰别人的目录。
+"""安装适配器：往**你给的目录**里装技能与钩子。代码里没有任何 agent 名字。
 
-设计约束（v2.1.0 重写）：
-    1. 没有"探测到谁就顺手装给谁"的逻辑。默认按当前运行环境判断宿主；判断不出来就只打印，不写。
-    2. 只在**已经存在**的宿主配置根里写；不会凭空创建别人的配置目录。
-    3. 不认识的文件绝不覆盖：目标文件里没有本插件的标记就不动，报冲突并给出手工办法。
-    4. 想强制覆盖必须显式 --force，且先备份成 <文件名>.bak-<时间戳>。
+设计原则（v2.2.0 重写）：
+    1. 不枚举宿主。装到哪里由路径决定，不由"名字"决定——任何 agent 都能用。
+    2. 不给路径就只探测候选目录并打印，不写任何东西。
+    3. 只在已存在的目录里写，不替你创建别人的配置根。
+    4. 不认识的文件绝不覆盖：没有 @studyloop-managed 标记就报冲突（退出码 3）。
+    5. --force 才覆盖，且先备份成 <文件名>.bak-<时间戳>。
 
 用法：
-    python core\\scripts\\install_adapters.py                     # 按当前宿主自动判断
-    python core\\scripts\\install_adapters.py --target opencode
-    python core\\scripts\\install_adapters.py --target claude
-    python core\\scripts\\install_adapters.py --target workbuddy
-    python core\\scripts\\install_adapters.py --target generic --skills-dir "D:\\my-agent\\skills"
-    python core\\scripts\\install_adapters.py --target none        # 只看诊断，不装
+    python core\\scripts\\install_adapters.py                        # 只探测，不写
+    python core\\scripts\\install_adapters.py --skills-dir <目录>    # 装技能
+    python core\\scripts\\install_adapters.py --skills-dir <目录> --plugin-dir <目录>
+    python core\\scripts\\install_adapters.py --skills-dir <目录> --hook-json
+    python core\\scripts\\install_adapters.py --discover             # 列出候选目录
 
-退出码：0 正常（含"判断不出宿主，只给说明"）；2 用法错误；3 有文件冲突未写入。
+目录来源（按顺序）：--skills-dir > 环境变量 STUDYLOOP_SKILLS_DIR > 自动探测（唯一候选才用）
 """
 
 from __future__ import annotations
@@ -37,53 +37,30 @@ HOME = os.path.expanduser("~")
 MARK_TS = "// @studyloop-managed"
 MARK_MD = "<!-- @studyloop-managed -->"
 
-# 每个宿主：怎么认出来、配置根在哪、钩子怎么装
-HOSTS = {
-    "opencode": {
-        "label": "OpenCode",
-        "root": os.path.join(HOME, ".config", "opencode"),
-        "skills": os.path.join(HOME, ".config", "opencode", "skills"),
-        "plugins": os.path.join(HOME, ".config", "opencode", "plugins"),
-        "hook": "plugin",
-    },
-    "claude": {
-        "label": "Claude Code / CodeBuddy",
-        "root": os.path.join(HOME, ".claude"),
-        "skills": os.path.join(HOME, ".claude", "skills"),
-        "plugins": None,
-        "hook": "print-json",
-    },
-    "workbuddy": {
-        "label": "WorkBuddy",
-        "root": os.path.join(HOME, ".workbuddy"),
-        "skills": os.path.join(HOME, ".workbuddy", "skills"),
-        "plugins": None,
-        "hook": "manual",
-    },
-}
-
-ENV_SIGNALS = [
-    ("opencode", ("OPENCODE_SESSION_ID", "OPENCODE")),
-    ("claude", ("CLAUDE_CODE_ENTRYPOINT", "CLAUDECODE", "CLAUDE_CODE_SSE_PORT")),
-    ("workbuddy", ("WORKBUDDY_HOME", "WORKBUDDY_SESSION_ID", "WORKBUDDY")),
-]
-
-MANUAL_HINT = [
-    "开课时（把画像与进度注入上下文）：",
-    "  python <PACK>\\core\\scripts\\mem.py inject",
-    "一轮结束后（把这一轮写进 L1）：",
-    "  python <PACK>\\core\\scripts\\mem.py ingest --file <对话记录文件>",
-    "其余命令（检索、判分、出题）在任何能跑命令的 agent 里都一样。",
-]
+ENV_SKILLS = "STUDYLOOP_SKILLS_DIR"
 
 
-def detect_host() -> tuple[str, str]:
-    """按当前进程环境判断宿主，返回 (target, 依据)。判断不出返回 ("", "")。"""
-    for target, names in ENV_SIGNALS:
+def candidates() -> list[str]:
+    """扫家目录，找已经存在的 <某个目录>/skills。不预设任何 agent 名字。"""
+    found: list[str] = []
+    roots = [HOME, os.path.join(HOME, ".config"), os.path.join(HOME, "AppData", "Roaming")]
+    seen = set()
+    for root in roots:
+        if not os.path.isdir(root) or root in seen:
+            continue
+        seen.add(root)
+        try:
+            names = os.listdir(root)
+        except Exception:
+            continue
         for n in names:
-            if os.environ.get(n):
-                return target, f"环境变量 {n}"
-    return "", ""
+            base = os.path.join(root, n)
+            if not os.path.isdir(base):
+                continue
+            s = os.path.join(base, "skills")
+            if os.path.isdir(s):
+                found.append(s)
+    return sorted(set(found))
 
 
 def read_head(path: str, limit: int = 4000) -> str:
@@ -112,27 +89,30 @@ class Result:
         self.conflicts: list[str] = []
 
 
-def put_file(path: str, content: str, mark: str, force: bool, res: Result) -> None:
-    """写一个文件：不存在就写；是本插件的就更新；别人的不碰。"""
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+def put_file(path: str, content: str, mark: str, force: bool, dry: bool, res: Result) -> None:
     if os.path.exists(path):
-        if is_ours(path, mark):
-            with open(path, "w", encoding="utf-8", newline="") as f:
-                f.write(content)
+        if not is_ours(path, mark):
+            if not force:
+                res.conflicts.append(path)
+                return
+            if dry:
+                res.written.append(path + "（将覆盖，先备份）")
+                return
+            saved = backup(path)
+            print(f"       已备份 -> {os.path.basename(saved)}")
+        if dry:
             res.written.append(path)
             return
-        if not force:
-            res.conflicts.append(path)
-            return
-        saved = backup(path)
-        print(f"       已备份 -> {os.path.basename(saved)}")
+    elif dry:
+        res.written.append(path)
+        return
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8", newline="") as f:
         f.write(content)
     res.written.append(path)
 
 
-def install_skill(skill_dir: str, force: bool, res: Result) -> None:
-    """装技能本体 + references，全部替换 <PACK>。"""
+def install_skills(skills_dir: str, force: bool, dry: bool, res: Result) -> None:
     src_root = os.path.join(PACK, "core", "skills")
     if not os.path.isdir(src_root):
         res.skipped.append(f"{src_root}（包里没有技能目录）")
@@ -141,10 +121,10 @@ def install_skill(skill_dir: str, force: bool, res: Result) -> None:
         src = os.path.join(src_root, name, "SKILL.md")
         if not os.path.isfile(src):
             continue
-        dst_dir = os.path.join(skill_dir, name)
+        dst_dir = os.path.join(skills_dir, name)
         with open(src, "r", encoding="utf-8") as f:
             put_file(os.path.join(dst_dir, "SKILL.md"),
-                     f.read().replace("<PACK>", PACK), MARK_MD, force, res)
+                     f.read().replace("<PACK>", PACK), MARK_MD, force, dry, res)
         ref_src = os.path.join(src_root, name, "references")
         if os.path.isdir(ref_src):
             for fn in sorted(os.listdir(ref_src)):
@@ -152,129 +132,133 @@ def install_skill(skill_dir: str, force: bool, res: Result) -> None:
                     continue
                 with open(os.path.join(ref_src, fn), "r", encoding="utf-8") as f:
                     put_file(os.path.join(dst_dir, "references", fn),
-                             f.read().replace("<PACK>", PACK), MARK_MD, force, res)
+                             f.read().replace("<PACK>", PACK), MARK_MD, force, dry, res)
 
 
-def install_opencode_plugin(target: dict, force: bool, res: Result) -> None:
+def install_plugin(plugin_dir: str, force: bool, dry: bool, res: Result) -> None:
     src = os.path.join(PACK, "adapters", "opencode", "memory.ts")
     if not os.path.isfile(src):
-        res.skipped.append(f"{src}（包里没有 OpenCode 适配器）")
+        res.skipped.append(f"{src}（包里没有钩子实现）")
         return
     with open(src, "r", encoding="utf-8") as f:
         code = f.read().replace("__PACK_ROOT__", PACK.replace("\\", "/"))
-    put_file(os.path.join(target["plugins"], "memory.ts"), code, MARK_TS, force, res)
+    put_file(os.path.join(plugin_dir, "memory.ts"), code, MARK_TS, force, dry, res)
 
 
-def show_claude_hooks() -> None:
+def show_hook_json() -> None:
     src = os.path.join(PACK, "adapters", "claude-code", "hooks.json")
     if not os.path.isfile(src):
         return
     with open(src, "r", encoding="utf-8") as f:
         text = f.read().replace("__PACK_ROOT__", PACK.replace("\\", "\\\\"))
     print()
-    print("  Claude Code / CodeBuddy 的钩子需要你手工合并进 settings.json 的 hooks 字段：")
+    print("  如果你的宿主用 settings.json 的 hooks 字段，把下面这段合并进去：")
     print()
     for line in text.splitlines():
         print("    " + line)
     print()
 
 
-def print_manual() -> None:
+def print_manual(skills_dir: str | None) -> None:
     print()
-    print("  手动用法（任何能跑命令的 agent 都适用）：")
-    for line in MANUAL_HINT:
-        print("    " + line.replace("<PACK>", PACK))
+    print("  手动用法（宿主没有钩子能力时）：")
+    print(f"    python {os.path.join(PACK, 'core', 'scripts', 'mem.py')} inject")
+    print(f"    python {os.path.join(PACK, 'core', 'scripts', 'mem.py')} ingest --file <对话记录文件>")
+    print("  其余命令（检索、判分、出题）在任何能跑命令的宿主里都一样。")
+    if skills_dir:
+        print(f"  技能目录：{skills_dir}")
 
 
-def do_install(target_name: str, args, res: Result) -> int:
-    target = HOSTS[target_name]
-    root = target["root"]
-    print(f"目标        {target['label']}")
-    print(f"配置根      {root}")
-
-    if not os.path.isdir(root):
-        print("  [跳过] 这个宿主在本机没有配置目录；不替你新建。")
-        print_manual()
-        return 0
-
-    skill_dir = args.skills_dir or target["skills"]
-    print(f"技能目录    {skill_dir}")
-    install_skill(skill_dir, args.force, res)
-
-    if target["hook"] == "plugin":
-        print(f"插件目录    {target['plugins']}")
-        install_opencode_plugin(target, args.force, res)
-    elif target["hook"] == "print-json":
-        show_claude_hooks()
-    else:
-        print("钩子       该宿主不加载本插件支持的钩子，改为手动 inject / ingest：")
-        print_manual()
-
-    return 0
+def pick_skills_dir(arg: str | None) -> tuple[str, str]:
+    """返回 (目录, 来源说明)。找不到返回 ("", 说明)。"""
+    if arg:
+        return os.path.abspath(arg), "--skills-dir"
+    env = os.environ.get(ENV_SKILLS)
+    if env:
+        return os.path.abspath(env), f"环境变量 {ENV_SKILLS}"
+    found = candidates()
+    if len(found) == 1:
+        return found[0], "自动探测（唯一候选）"
+    return "", ""
 
 
 def main() -> int:
     p = argparse.ArgumentParser(
         prog="install_adapters.py",
-        description="把 StudyLoop 装进指定的 agent（不会碰其它 agent 的目录）")
-    p.add_argument("--target", default="auto",
-                   choices=["auto", "opencode", "claude", "workbuddy", "generic", "none"],
-                   help="装给谁；auto=按当前运行环境判断，判断不出就只打印说明")
-    p.add_argument("--skills-dir", default=None, help="技能目录（generic 必填；其它宿主可覆盖）")
+        description="把 StudyLoop 装进你指定的技能目录；不认 agent 名字，只认路径。")
+    p.add_argument("--skills-dir", default=None, help="技能安装目录（任意宿主的目录都行）")
+    p.add_argument("--plugin-dir", default=None, help="可选：把钩子文件放进这个目录（宿主从目录加载插件时用）")
+    p.add_argument("--hook-json", action="store_true", help="可选：打印 settings.json 风格的钩子片段")
+    p.add_argument("--discover", action="store_true", help="只列出本机候选技能目录，不安装")
     p.add_argument("--force", action="store_true", help="覆盖不是本插件写的同名文件（会先备份）")
+    p.add_argument("--dry-run", action="store_true", help="只说会写哪些文件，不落地")
     args = p.parse_args()
 
     print("== 安装适配器 ==")
-    res = Result()
 
-    target_name = args.target
-    if target_name == "auto":
-        detected, why = detect_host()
-        if detected:
-            target_name = detected
-            print(f"宿主        {HOSTS[detected]['label']}（依据：{why}）")
-        else:
-            print("宿主        判断不出（没有可识别的环境变量）")
-            print("  [跳过] 为了不误写别人的目录，这次不安装任何东西。")
-            print("  显式指定即可：--target opencode | claude | workbuddy | generic")
-            print_manual()
-            return 0
-
-    if target_name == "none":
-        print("目标        none（只看不装）")
-        print_manual()
+    if args.discover:
+        found = candidates()
+        print("候选技能目录（已存在 <目录>/skills 的位置）：")
+        for d in found:
+            print(f"  {d}")
+        if not found:
+            print("  （没找到；用 --skills-dir 指定你宿主读技能的位置）")
         return 0
 
-    if target_name == "generic":
-        if not args.skills_dir:
-            print("[error] --target generic 需要同时给 --skills-dir", file=sys.stderr)
+    skills_dir, source = pick_skills_dir(args.skills_dir)
+    if not skills_dir:
+        found = candidates()
+        print("没有指定技能目录，也没有唯一候选；不写任何文件。")
+        if found:
+            print("本机找到多个候选，请挑一个：")
+            for d in found:
+                print(f"  --skills-dir \"{d}\"")
+        else:
+            print("本机没找到候选。告诉你宿主的技能目录在哪，然后：")
+            print("  --skills-dir <该目录>")
+        print_manual(None)
+        return 0
+
+    if not os.path.isdir(skills_dir):
+        print(f"[error] 技能目录不存在：{skills_dir}", file=sys.stderr)
+        print("        不替你创建目录（避免误把你宿主的目录结构带歪）。", file=sys.stderr)
+        return 2
+
+    print(f"技能目录    {skills_dir}（来源：{source}）")
+    res = Result()
+    install_skills(skills_dir, args.force, args.dry_run, res)
+
+    if args.plugin_dir:
+        if not os.path.isdir(args.plugin_dir):
+            print(f"[error] 插件目录不存在：{args.plugin_dir}", file=sys.stderr)
             return 2
-        if not os.path.isdir(args.skills_dir):
-            print(f"[error] 技能目录不存在：{args.skills_dir}", file=sys.stderr)
-            return 2
-        print(f"目标        通用（技能目录 {args.skills_dir}）")
-        install_skill(args.skills_dir, args.force, res)
-        print_manual()
+        print(f"插件目录    {args.plugin_dir}")
+        install_plugin(args.plugin_dir, args.force, args.dry_run, res)
     else:
-        do_install(target_name, args, res)
+        print("钩子        未指定 --plugin-dir，跳过（技能本身不依赖钩子）")
+
+    if args.hook_json:
+        show_hook_json()
 
     print()
     for path in res.written:
-        print(f"  [写入] {path}")
+        print(f"  [{'将写' if args.dry_run else '写入'}] {path}")
     for note in res.skipped:
         print(f"  [跳过] {note}")
     for path in res.conflicts:
         print(f"  [冲突] {path}")
-        print("         这个文件已存在，且不是本插件写的；没有覆盖。")
-        print("         要么换个位置（--skills-dir），要么确认后加 --force（会先备份）。")
+        print("         已存在且不是本插件写的；没有覆盖。")
+        print("         确认后加 --force（会先备份），或换一个 --skills-dir。")
 
     print()
     if res.conflicts:
         print("  有冲突文件未处理，其余已写入。")
         return 3
     if res.written:
-        print("  完成。只动了上面这些路径，其它 agent 的目录一个字节没碰。")
-        print("  若该 agent 正在运行，重启它，钩子才会加载。")
+        if args.dry_run:
+            print("  --dry-run：以上是计划，未真正写入。")
+        else:
+            print("  完成。只动了上面这些路径。")
     else:
         print("  没有写入任何文件。")
     return 0

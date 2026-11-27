@@ -21,16 +21,17 @@ python -V
 ```powershell
 cd <pack-directory>
 python core\scripts\setup_config.py              # optional local preferences (no machine paths)
-python core\scripts\install_adapters.py          # installs into the host it can identify; no target = auto
-python core\scripts\probe.py                     # self-check: environment, data, parsing capability
+python core\scripts\install_adapters.py --discover   # what skill directories exist here?
+python core\scripts\install_adapters.py --skills-dir <one of them>
 ```
 
 `install_adapters.py` rules — do not work around them:
 
-1. It installs **one** host, named by `--target opencode|claude|workbuddy|generic|none`, or auto-detected from the running environment. If detection fails it **prints instructions and writes nothing**.
-2. It never creates another agent's config root; it writes only inside a root that already exists.
-3. It never overwrites a file it does not own: the target must contain the `@studyloop-managed` marker. Otherwise it reports a conflict and exits **3**. `--force` overwrites, but saves `<name>.bak-<timestamp>` first.
-4. For a host with no known skill directory: `--target generic --skills-dir <path>`.
+1. **There is no agent list in the code.** The destination is a directory, so any host works. Never add an enum of agent names back.
+2. No `--skills-dir`, no `STUDYLOOP_SKILLS_DIR`, and not exactly one discovered candidate → it prints instructions and writes nothing.
+3. It never creates a target directory; a missing path is an error (exit 2).
+4. It never overwrites a file it does not own: the target must contain `@studyloop-managed`, otherwise it reports a conflict and exits **3**. `--force` overwrites but saves `<name>.bak-<timestamp>` first.
+5. Hooks are optional and host-specific: `--plugin-dir <dir>` drops the hook file, `--hook-json` prints a `settings.json` snippet to merge by hand. Skills alone work without any hook.
 
 **Restart the agent afterwards** (only if a hook was installed), otherwise hooks will not load.
 

@@ -32,9 +32,9 @@ REM ---- 2. Write optional preferences ----
 echo.
 python "core\scripts\setup_config.py"
 
-REM ---- 3. Install into the agent that is running this, nothing else ----
+REM ---- 3. Install into a directory you name; with no arguments it only probes ----
 echo.
-python "core\scripts\install_adapters.py" --target auto
+python "core\scripts\install_adapters.py" %*
 set INSTALL_RC=%errorlevel%
 
 echo.
@@ -45,10 +45,16 @@ if "%INSTALL_RC%"=="3" (
 ) else (
   echo   Done.
 )
+echo.
+echo   Installed nothing? You probably did not pass a directory.
+echo   List the skill folders that exist on this machine:
+echo     install.bat --discover
+echo   Then install into one of them:
+echo     install.bat --skills-dir "%%USERPROFILE%%\.your-agent\skills"
+echo.
 echo   Next steps:
 echo     1. Create a course folder yourself and add a .study-workspace file
 echo        (see README.md, section "Start a course")
 echo     2. Open that folder with your agent, or use the CLI directly
-echo     3. Restart the agent so the hooks load (if a hook was installed)
 echo ============================================
 pause

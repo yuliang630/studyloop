@@ -27,19 +27,6 @@ ROOT_SOURCE = _paths.describe_source()
 DATA = os.path.join(ROOT, "data") if ROOT else ""
 HOME = os.path.expanduser("~")
 
-# harness 标记目录（存在即认为该 harness 可能在本机）
-HARNESS_MARKERS = {
-    "opencode": [os.path.join(HOME, ".config", "opencode")],
-    "claude-code": [os.path.join(HOME, ".claude")],
-    "codex": [os.path.join(HOME, ".codex")],
-    "cursor": [os.path.join(HOME, ".cursor")],
-    "codebuddy/workbuddy": [
-        os.path.join(HOME, ".codebuddy"),
-        os.path.join(HOME, ".workbuddy"),
-    ],
-    "deepseek-harness": [os.path.join(HOME, ".dsh"), os.environ.get("DSH_HOME", "")],
-}
-
 
 def read_lines(path: str) -> list[str]:
     try:
@@ -89,30 +76,25 @@ def l3_ready() -> dict:
     }
 
 
-def detect_harness() -> dict:
-    found = {}
-    for name, paths in HARNESS_MARKERS.items():
-        for p in paths:
-            if p and os.path.exists(p):
-                found[name] = p
-                break
-    return found
+def detect_skills_dirs() -> list[str]:
+    """扫家目录找已存在的 <目录>/skills，不预设 agent 名字。"""
+    try:
+        import install_adapters as _ia
+        return _ia.candidates()
+    except Exception:
+        return []
 
 
-def verdict_of(harness: dict) -> tuple[str, str]:
-    names = set(harness)
-    if "opencode" in names:
-        return "A-opencode", "本机是 OpenCode，用 plugins/memory.ts（已适配）"
-    if names & {"claude-code", "codebuddy/workbuddy", "deepseek-harness"}:
-        return "A-hooks", "本机 agent 支持命令钩子，用 hooks.json（SessionStart→inject / Stop→ingest）"
-    if "cursor" in names:
-        return "D-static", "Cursor 无命令钩子：只能静态注入 rules + 手动调 CLI"
-    return "D-manual", "未识别到已知 harness：先手动用 CLI，或补齐适配层"
+def verdict_of(dirs: list[str]) -> tuple[str, str]:
+    if dirs:
+        return "A-skills-dir", f"找到 {len(dirs)} 个候选技能目录：用 --skills-dir 指定一个即可（不限定宿主）"
+    return "D-manual", "本机没找到技能目录：先手动用 CLI，或告诉我你宿主的技能目录"
 
 
 def main() -> int:
     as_json = "--json" in sys.argv
     l1_files, l1_records = count_l1()
+    skills_dirs = detect_skills_dirs()
     report = {
         "memory_root": ROOT,
         "python": sys.version.split()[0],
@@ -123,13 +105,13 @@ def main() -> int:
             "l2_facts": count_l2(),
             "l3": l3_ready(),
         },
-        "harness_detected": detect_harness(),
+        "skills_dirs": skills_dirs,
         "commands_available": [
             "init", "stats", "recall", "digest", "fact-add", "fact-list",
             "verify", "forget", "inject", "ingest",
         ],
     }
-    route, why = verdict_of(report["harness_detected"])
+    route, why = verdict_of(skills_dirs)
     report["verdict"] = {"route": route, "reason": why}
 
     if as_json:
@@ -148,12 +130,12 @@ def main() -> int:
     print(f"L2          {d['l2_facts']} 条事实")
     print(f"L3          profile={'有' if d['l3']['profile'] else '无'}  recent={'有' if d['l3']['recent'] else '无'}")
     print()
-    print("== 检测到的 harness ==")
-    if report["harness_detected"]:
-        for k, v in report["harness_detected"].items():
-            print(f"  {k:<22} {v}")
+    print("== 候选技能目录（不预设宿主，实测存在才列）==")
+    if skills_dirs:
+        for d in skills_dirs:
+            print(f"  {d}")
     else:
-        print("  （未识别）")
+        print("  （没找到；用 --skills-dir 指定你宿主读技能的位置）")
     print()
     print("== 素材解析能力 ==")
     try:
