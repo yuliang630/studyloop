@@ -1,6 +1,6 @@
 # StudyLoop · Technical Reference
 
-> Version 2.3.0 · 2026-11-27
+> Version 0.1.0 (beta) · 2026-11-27
 > Audience: developers and agents who will maintain or iterate on this pack. Read this to understand **what it is, how it is organized, how it runs, and where to change things**.
 
 ---
@@ -229,17 +229,21 @@ Ordinary directories are never written to. There is **no fallback root** — the
 
 ## 10. Version history
 
+**First public release: 0.1.0 (beta).** The code was written and revised within a single day, 2026-11-27. Earlier internal numbers were never published and are not kept as versions: a version number is a promise to users, not a diary entry.
+
 | Version | Date | Content |
 |---|---|---|
-| **2.3.0** | 2026-11-27 | Automatic memory no longer depends on hooks: `mem.py boot` (profile + progress + due + channel status), `mem.py note` (agent summary into L1 with `source: agent-note` and `turn_key` de-duplication), `mem.py audit` (days with answers but no record), `install_adapters.py --rules-file` (contract block in the host's instruction file), `mcp_server.py` (stdlib MCP server exposing the same five capabilities), hook heartbeat `state/hook.json` |
-| 2.2.0 | 2026-11-27 | Installer is path-driven, not name-driven: --skills-dir (or STUDYLOOP_SKILLS_DIR, or a single discovered <dir>/skills); no agent enumeration anywhere; --discover lists real candidates; --plugin-dir / --hook-json cover hosts that load plugins or settings.json hooks; refuses to create missing directories or overwrite foreign files |
-| 2.1.0 | 2026-11-27 | Host-neutral installer: installs into one named host only (--target, auto-detected), never creates another agent's config root, refuses to overwrite files it does not own (exit 3) and backs up before --force; installed files carry an ownership marker; WorkBuddy / generic hosts get the skill plus manual inject/ingest instructions |
-| 2.0.2 | 2026-11-27 | Renamed to StudyLoop (repository yuliang630/studyloop); the name now states what the plugin does — search, answer, grade, review, generate as one loop. No behaviour change. |
-| 2.0.1 | 2026-11-27 | Bilingual README and bilingual artifact templates plus validator (zh/en section names and answer labels); English documentation and bilingual skill triggers; parsing layer rebuilt as an engine registry (about 20 optional engines, built-in html/ipynb/epub, text sniffing and generic converters); **no fallback memory root** — the CLI exits 2 outside a course; `config.json` no longer records machine paths; references installed together with the skill; MIT `LICENSE` |
-| 2.0.0 | 2026-11-27 | Artifact scaffolding: four templates (exam / lesson / handout / curriculum), `artifacts.py` (new/list/layout/check/bank/link), `brief.py` input assembly; the validator rejects missing sections, insufficient coverage, missing answers, missing score points and missing citations; no new required dependency |
-| 1.2.0 | 2026-11-27 | Material parsing layer: multi-engine priority chains (PDF / DOCX / PPTX / XLSX / images), automatic OCR for scanned pages, `retrieve.py add`, explicit skip reporting |
-| 1.1.0 | 2026-11-27 | Algorithm replacement: mastery moved to Bayesian Knowledge Tracing, review moved to an exponential forgetting curve; all dependence on previous rule parameters removed |
-| 1.0.0 | 2026-11-27 | First complete version: three-layer memory, mastery grading, practice loop, review scheduling, knowledge-point path, retrieval and evaluation, multi-agent adapters, course workspace, migration documentation |
+| **0.1.0** (beta) | 2026-11-27 | First public release: three-layer memory, BKT mastery, BM25 retrieval, forgetting-curve review, knowledge-point path, artifact scaffolding (bilingual templates + validator), path-based host-neutral installer, four memory channels (hook / MCP / CLI / files only), bilingual README, MIT licence |
+
+### What was built that day (internal notes, no version numbers)
+
+- base: three-layer memory, mastery grading, practice loop, review scheduling, knowledge-point path, retrieval and evaluation, agent adapters, course workspace, migration docs
+- algorithms: mastery moved to Bayesian Knowledge Tracing; review moved to an exponential forgetting curve
+- parsing: engine registry (about 20 optional engines) with built-in html / ipynb / epub, text sniffing and generic converters
+- artifacts: four templates, `new/list/layout/check/bank/link`, `brief.py`, validation in Chinese and English, question bank, path linkage
+- installer: from "install into whatever directory happens to exist" to a three-name whitelist, then to paths only
+- memory: runtime channel detection (`boot`), `note` for hook-less hosts, `audit` reconciliation, `mcp_server.py`, hook heartbeat
+- documentation: English rewrite, then a bilingual README; macOS/Linux still unsupported
 
 ### Fixes during development
 Millisecond timestamp crash · reasoning leakage into excerpts · backfill storm on plugin load · duplicate writes on hot reload · string-based sorting · mixed time zones · entire long turn lost when the window contained no user message · plugin resolved its root per process instead of per session · hardcoded retrieval directories · `path.py` wrote to the wrong file handle · `inject` returned early and swallowed progress · `<PACK>` placeholder left unreplaced in the installed skill · two Python spawns per turn merged into one · console window flashes (`windowsHide`)

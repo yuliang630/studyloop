@@ -8,7 +8,7 @@
 
 没有界面，不捆运行时，必需依赖只有 Python 3.11+。
 
-当前版本 **2.3.0**，MIT 许可。
+当前版本 **0.1.0**（首个公开测试版），MIT 许可。
 
 ---
 
@@ -383,7 +383,7 @@ A learning plugin for AI agents. It runs inside the chat: **remember** (memory),
 
 No UI. No bundled runtime. The only requirement is Python 3.11+.
 
-Version **2.3.0**, MIT licence.
+Version **0.1.0** (first public beta), MIT licence.
 
 ---
 
