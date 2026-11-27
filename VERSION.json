@@ -1,0 +1,95 @@
+{
+  "name": "StudyPack",
+  "display_name": "StudyPack · Personalized Learning Plugin for AI Agents",
+  "version": "2.0.1",
+  "released": "2026-11-27",
+  "kind": "agent-extension-pack",
+  "summary": "A learning plugin for AI agents: memory, mastery grading, material retrieval, review scheduling, artifact scaffolding.",
+  "platform": ["windows"],
+  "requires": {
+    "python": ">=3.11",
+    "third_party": []
+  },
+  "optional": {
+    "note": "Nothing is required. Any engine found on the machine is used; nothing is installed automatically.",
+    "pdf": "pymupdf / pdfplumber / pypdf / PyPDF2 / pdfminer / pdftotext / mutool / LibreOffice",
+    "ocr": "pytesseract / tesseract CLI / easyocr / paddleocr",
+    "docx": "python-docx / docx2txt / pandoc / LibreOffice",
+    "office": "python-pptx / openpyxl / pandas / LibreOffice / antiword / catdoc",
+    "generic": "pandoc / LibreOffice handle unlisted formats"
+  },
+  "entrypoints": {
+    "install": "install.bat",
+    "self_check": "core/scripts/probe.py",
+    "artifacts": "core/scripts/artifacts.py",
+    "brief": "core/scripts/brief.py"
+  },
+  "components": {
+    "core/scripts": [
+      "paths.py", "mem.py", "mastery.py", "practice.py", "srs.py",
+      "parsers.py", "review.py", "path.py", "retrieve.py",
+      "artifacts.py", "brief.py",
+      "probe.py", "setup_config.py", "install_adapters.py"
+    ],
+    "core/skills": ["study-loop/SKILL.md", "study-loop/references/layout.md"],
+    "core/skills/templates": ["exam.md", "lesson.md", "handout.md", "curriculum.md", "en/exam.md", "en/lesson.md", "en/handout.md", "en/curriculum.md"],
+    "adapters": [
+      "opencode/memory.ts",
+      "claude-code/hooks.json",
+      "generic/README.md"
+    ]
+  },
+  "algorithms": {
+    "mastery": {
+      "model": "Bayesian Knowledge Tracing",
+      "params": {"p_l0": 0.3, "p_t": 0.15, "p_g": 0.2, "p_s": 0.1},
+      "gate": 0.95,
+      "source": "Corbett & Anderson 1995"
+    },
+    "review": {
+      "model": "exponential forgetting curve (half-life)",
+      "target_retention": 0.8,
+      "source": "Ebbinghaus 1885"
+    },
+    "retrieval": {
+      "model": "BM25 (k1=1.5, b=0.75)",
+      "tokenizer": "CJK bigram + latin word",
+      "source": "Robertson & Zaragoza 2009"
+    }
+  },
+  "data_contract": {
+    "location": "<course>/记忆/data",
+    "layers": ["L1", "L2", "L3", "state"],
+    "artifacts": {
+      "exam": "题库/考试卷/<date>-<slug>.md",
+      "lesson": "笔记/教案/<date>-<slug>.md",
+      "handout": "笔记/讲义/<slug>.md",
+      "curriculum": "记录/课程规划.md",
+      "bank": "题库/index.jsonl"
+    }
+  },
+  "capabilities": {
+    "memory": "Writes L1 every turn and injects the L3 profile plus progress; records only inside a course folder",
+    "mastery": "BKT posterior probability with a 0.95 gate; concept/design knowledge points need a qualitative pass; hints are not counted as evidence",
+    "retrieval": "BM25 keyword search with CJK bigrams",
+    "review": "Forgetting-curve half-life scheduling",
+    "path": "Knowledge-point path progression",
+    "artifacts": "Artifact scaffolding: four templates in Chinese and English, structural validation accepting either language, questions into the bank, path linkage",
+    "brief": "Generation input assembly: materials + mastery + errors + progress"
+  },
+  "languages": {
+    "docs": "English (README bilingual)",
+    "skill": "English with bilingual trigger words",
+    "cli_output": "Chinese",
+    "artifact_templates": ["zh", "en"]
+  },
+  "limits": [
+    "Windows only",
+    "No UI, no multi-user",
+    "No semantic search",
+    "Writes memory only inside a course folder",
+    "Artifact bodies are produced by the agent; the plugin provides structure, input and validation only"
+  ],
+  "third_party_code": [],
+  "license_recommendation": "MIT"
+}

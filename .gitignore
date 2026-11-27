@@ -1,0 +1,18 @@
+# local preferences written by the installer (may contain a local path)
+config.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+
+# Course data must never live in the repository
+记忆/
+.study-workspace

@@ -1,0 +1,24 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"__PACK_ROOT__/core/scripts/mem.py\" inject"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"__PACK_ROOT__/core/scripts/mem.py\" ingest --from-stdin"
+          }
+        ]
+      }
+    ]
+  }
+}
