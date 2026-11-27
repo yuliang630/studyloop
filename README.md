@@ -8,7 +8,7 @@
 
 没有界面，不捆运行时，必需依赖只有 Python 3.11+。
 
-当前版本 **2.2.0**，MIT 许可。
+当前版本 **2.3.0**，MIT 许可。
 
 ---
 
@@ -113,6 +113,54 @@ python core\scripts\install_adapters.py --discover
 ```
 
 `default_workspace` 是"不在课程目录里时默认用哪个课程"，可以不设。设了也只是显式指定，不会变成偷偷写数据的兜底库。
+
+---
+
+## 自动记忆：由运行期决定谁记账
+
+装的时候**不需要知道宿主有没有钩子**。开课跑一条命令，它会告诉你现在走哪条通道、本轮结束要不要手动记账：
+
+```powershell
+python core\scripts\mem.py boot
+```
+
+| `记忆通道` 那一行 | 含义 | 本轮结束做什么 |
+|---|---|---|
+| 钩子 工作中 | 宿主钩子在写 L1 | 什么都不用做 |
+| 未检测到钩子 / 未工作 | 没有钩子（或钩子没跑） | `mem.py note --text "<一句话总结>"` |
+| MCP | 本次调用来自 MCP 服务端 | 调工具 `studyloop_note` |
+
+四条通道，同一套动作：
+
+| 通道 | 需要什么 | 自动化程度 |
+|---|---|---|
+| 钩子 | 宿主开放钩子 API | 全自动：注入 + 记录 |
+| MCP | 宿主支持 MCP | 标准工具；`initialize` 时带服务端说明 |
+| 命令行 | 能执行命令 | agent 自己跑 `boot` / `note` |
+| 纯文件 | 只能读写文件 | 读 `inject-cache.md`，把摘要写进 `记录/会话日志.md` |
+
+MCP 只配一次，任何支持 MCP 的宿主通用：
+
+```json
+{"mcpServers": {"studyloop": {"command": "python",
+  "args": ["D:\\插件\\studyloop\\core\\scripts\\mcp_server.py"]}}}
+```
+
+无钩子宿主还可以把契约写进宿主的指令文件：
+
+```powershell
+python core\scripts\install_adapters.py --rules-file "<宿主的 AGENTS.md / 规则文件>"
+```
+
+它只写一段带 `<!-- studyloop:begin/end -->` 标记的块，追加不覆盖，`--remove-rules` 可撤销。
+
+**对账**（否则“自动记忆”只是自说自话）：
+
+```powershell
+python core\scripts\mem.py audit --days 7
+```
+
+它会指出“有作答但没有对话记录”的日期，并给出补法。
 
 ---
 
@@ -284,10 +332,14 @@ studyloop\
 | `practice.py qualify --kp …` | 概念/设计类定性合格 |
 | `review.py due` | 今天到期 |
 | `path.py init / next / done` | 知识点路径 |
-| `mem.py inject` | 打印注入块 |
+| `mem.py boot` | 开课一条命令：画像 + 进度 + 到期复习 + 当前记忆通道 |
+| `mem.py note --text "…"` | 无钩子时记账（写 L1，来源标 agent-note，按内容去重） |
+| `mem.py audit --days 7` | 对账：有作答但没有对话记录的日期 |
+| `mem.py inject` | 只打印注入块（boot 的简化版） |
 | `mem.py ingest --file …` | 回填一段对话 |
 | `mem.py digest / fact-add / verify` | 固化与断链检查 |
 | `mem.py forget --sid …` | 删除某会话记忆（先归档） |
+| `mcp_server.py` | MCP 服务端（stdio JSON-RPC），把 boot/note/search/record/due 暴露成工具 |
 
 ---
 
@@ -331,7 +383,7 @@ A learning plugin for AI agents. It runs inside the chat: **remember** (memory),
 
 No UI. No bundled runtime. The only requirement is Python 3.11+.
 
-Version **2.2.0**, MIT licence.
+Version **2.3.0**, MIT licence.
 
 ---
 
@@ -436,6 +488,54 @@ The pack **runs from any directory**: every script locates the pack root from it
 ```
 
 `default_workspace` is "which course to use when you are not inside a course folder". It may stay empty. When set, it is an explicit choice, not a silent dumping ground.
+
+---
+
+## Automatic memory: decided at runtime, not at install time
+
+You do **not** need to know whether the host has hooks. One command at the start of a session tells you which channel is active and what to do at the end of the turn:
+
+```powershell
+python core\scripts\mem.py boot
+```
+
+| The `记忆通道` line says | Meaning | End of turn |
+|---|---|---|
+| 钩子 工作中 | the host hook is writing L1 | nothing |
+| 未检测到钩子 / 未工作 | no hook (or it is not running) | `mem.py note --text "<one line>"` |
+| MCP | the call came through the MCP server | call the `studyloop_note` tool |
+
+Four channels, one protocol:
+
+| Channel | Needs | Automation |
+|---|---|---|
+| Hook | host exposes a hook API | full: inject + record |
+| MCP | host supports MCP | standard tools; `initialize` carries server instructions |
+| CLI | can run commands | the agent runs `boot` / `note` itself |
+| Files only | can read and write files | read `inject-cache.md`, append the summary to `记录/会话日志.md` |
+
+MCP is configured once and works on any host that speaks it:
+
+```json
+{"mcpServers": {"studyloop": {"command": "python",
+  "args": ["D:\\插件\\studyloop\\core\\scripts\\mcp_server.py"]}}}
+```
+
+For a hook-less host you can also write the contract into its instruction file:
+
+```powershell
+python core\scripts\install_adapters.py --rules-file "<the host's AGENTS.md / rules file>"
+```
+
+It writes one block delimited by `<!-- studyloop:begin/end -->`, appends without touching existing content, and `--remove-rules` takes it out again.
+
+**Reconcile**, otherwise "automatic memory" is self-congratulation:
+
+```powershell
+python core\scripts\mem.py audit --days 7
+```
+
+It names the days with answers but no dialogue record, and says how to fill the gap.
 
 ---
 
@@ -607,10 +707,14 @@ studyloop\
 | `practice.py qualify --kp …` | mark a concept/design knowledge point as qualitatively passed |
 | `review.py due` | items due today |
 | `path.py init / next / done` | knowledge-point path |
-| `mem.py inject` | print the injection block |
+| `mem.py boot` | one command at session start: profile + progress + due + active channel |
+| `mem.py note --text "…"` | record without a hook (L1, source agent-note, de-duplicated) |
+| `mem.py audit --days 7` | reconcile: days with answers but no dialogue record |
+| `mem.py inject` | print the injection block only (boot is the full version) |
 | `mem.py ingest --file …` | backfill a conversation |
 | `mem.py digest / fact-add / verify` | consolidation and broken-link checks |
 | `mem.py forget --sid …` | delete a session's memory (archives first) |
+| `mcp_server.py` | MCP server (stdio JSON-RPC) exposing boot/note/search/record/due as tools |
 
 ---
 

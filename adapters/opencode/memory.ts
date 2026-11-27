@@ -249,6 +249,30 @@ export default {
             payload,
           )
           await log(`idle: ingest ${res.ok ? "OK" : "FAILED"} root=${root} ${res.out.slice(0, 300)}`, root)
+
+          // 心跳：只有真的写入 L1 才更新，供 mem.py boot 判断"钩子在不在工作"
+          if (res.ok && /\[ok\] 写入 L1/.test(res.out)) {
+            try {
+              if (FS) {
+                const hbFile = `${root}/data/state/hook.json`
+                let prev: Record<string, unknown> = {}
+                try {
+                  prev = JSON.parse(FS.readFileSync(hbFile, "utf8")) as Record<string, unknown>
+                } catch {
+                  /* 第一次运行，没有旧心跳 */
+                }
+                const turns = Number(prev.turns ?? 0) + 1
+                FS.writeFileSync(
+                  hbFile,
+                  JSON.stringify({ v: 1, last_ingest_at: new Date().toISOString(), turns, surface: "hook" }, null, 2),
+                  "utf8",
+                )
+              }
+            } catch {
+              /* 心跳写不了不影响记录本身 */
+            }
+          }
+
           if (!res.ok) {
             try {
               if (FS) FS.writeFileSync(`${root}/data/state/last-ingest-payload.json`, payload, "utf8")

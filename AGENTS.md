@@ -22,7 +22,7 @@ python -V
 cd <pack-directory>
 python core\scripts\setup_config.py              # optional local preferences (no machine paths)
 python core\scripts\install_adapters.py --discover   # what skill directories exist here?
-python core\scripts\install_adapters.py --skills-dir <one of them>
+python core\scripts\install_adapters.py --skills-dir <one of them> --rules-file <its instruction file>
 ```
 
 `install_adapters.py` rules — do not work around them:
@@ -105,6 +105,7 @@ Real-machine verification (with an agent):
 | `core\scripts\parsers.py` | material parsing: engine registry (probe + reader per engine), per-format chains, generic fallback; **missing engines are skipped, never fatal** |
 | `core\scripts\artifacts.py` | artifact scaffolding, validation, question bank, path linkage; templates in `templates\` (zh) and `templates\en\` (en) |
 | `core\scripts\brief.py` | assembles the input packet for artifact generation |
+| `core\scripts\mcp_server.py` | MCP transport shell (stdio JSON-RPC); exposes boot/note/search/record/due |
 | `adapters\opencode\memory.ts` | the only hook-based adapter (thin shell, about 250 lines) |
 | `<course>\记忆\data\state\` | runtime state (cursors, attempts, reviews, index) |
 

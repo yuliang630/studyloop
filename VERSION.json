@@ -1,11 +1,13 @@
 {
   "name": "StudyLoop",
   "display_name": "StudyLoop · 学习闭环 / Personalized Learning Plugin for AI Agents",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "released": "2026-11-27",
   "kind": "agent-extension-pack",
   "summary": "A learning plugin for AI agents: memory, mastery grading, material retrieval, review scheduling, artifact scaffolding.",
-  "platform": ["windows"],
+  "platform": [
+    "windows"
+  ],
   "requires": {
     "python": ">=3.11",
     "third_party": []
@@ -23,17 +25,41 @@
     "self_check": "core/scripts/probe.py",
     "installer": "core/scripts/install_adapters.py",
     "artifacts": "core/scripts/artifacts.py",
-    "brief": "core/scripts/brief.py"
+    "brief": "core/scripts/brief.py",
+    "mcp": "core/scripts/mcp_server.py"
   },
   "components": {
     "core/scripts": [
-      "paths.py", "mem.py", "mastery.py", "practice.py", "srs.py",
-      "parsers.py", "review.py", "path.py", "retrieve.py",
-      "artifacts.py", "brief.py",
-      "probe.py", "setup_config.py", "install_adapters.py"
+      "paths.py",
+      "mem.py",
+      "mastery.py",
+      "practice.py",
+      "srs.py",
+      "parsers.py",
+      "review.py",
+      "path.py",
+      "retrieve.py",
+      "artifacts.py",
+      "brief.py",
+      "probe.py",
+      "setup_config.py",
+      "install_adapters.py",
+      "mcp_server.py"
     ],
-    "core/skills": ["study-loop/SKILL.md", "study-loop/references/layout.md"],
-    "core/skills/templates": ["exam.md", "lesson.md", "handout.md", "curriculum.md", "en/exam.md", "en/lesson.md", "en/handout.md", "en/curriculum.md"],
+    "core/skills": [
+      "study-loop/SKILL.md",
+      "study-loop/references/layout.md"
+    ],
+    "core/skills/templates": [
+      "exam.md",
+      "lesson.md",
+      "handout.md",
+      "curriculum.md",
+      "en/exam.md",
+      "en/lesson.md",
+      "en/handout.md",
+      "en/curriculum.md"
+    ],
     "adapters": [
       "opencode/memory.ts",
       "claude-code/hooks.json",
@@ -43,7 +69,12 @@
   "algorithms": {
     "mastery": {
       "model": "Bayesian Knowledge Tracing",
-      "params": {"p_l0": 0.3, "p_t": 0.15, "p_g": 0.2, "p_s": 0.1},
+      "params": {
+        "p_l0": 0.3,
+        "p_t": 0.15,
+        "p_g": 0.2,
+        "p_s": 0.1
+      },
       "gate": 0.95,
       "source": "Corbett & Anderson 1995"
     },
@@ -60,7 +91,12 @@
   },
   "data_contract": {
     "location": "<course>/记忆/data",
-    "layers": ["L1", "L2", "L3", "state"],
+    "layers": [
+      "L1",
+      "L2",
+      "L3",
+      "state"
+    ],
     "artifacts": {
       "exam": "题库/考试卷/<date>-<slug>.md",
       "lesson": "笔记/教案/<date>-<slug>.md",
@@ -70,19 +106,23 @@
     }
   },
   "capabilities": {
-    "memory": "Writes L1 every turn and injects the L3 profile plus progress; records only inside a course folder",
+    "memory": "Writes L1 and injects the profile; works with or without host hooks — `boot` reports the active channel (hook / MCP / CLI / files) and `note` covers hook-less hosts",
     "mastery": "BKT posterior probability with a 0.95 gate; concept/design knowledge points need a qualitative pass; hints are not counted as evidence",
     "retrieval": "BM25 keyword search with CJK bigrams",
     "review": "Forgetting-curve half-life scheduling",
     "path": "Knowledge-point path progression",
     "artifacts": "Artifact scaffolding: four templates in Chinese and English, structural validation accepting either language, questions into the bank, path linkage",
-    "brief": "Generation input assembly: materials + mastery + errors + progress"
+    "brief": "Generation input assembly: materials + mastery + errors + progress",
+    "mcp": "MCP stdio server exposing boot/note/search/record/due plus profile and due resources"
   },
   "languages": {
     "docs": "English (README bilingual)",
     "skill": "English with bilingual trigger words",
     "cli_output": "Chinese",
-    "artifact_templates": ["zh", "en"]
+    "artifact_templates": [
+      "zh",
+      "en"
+    ]
   },
   "limits": [
     "Windows only",

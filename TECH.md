@@ -1,6 +1,6 @@
 # StudyLoop · Technical Reference
 
-> Version 2.2.0 · 2026-11-27
+> Version 2.3.0 · 2026-11-27
 > Audience: developers and agents who will maintain or iterate on this pack. Read this to understand **what it is, how it is organized, how it runs, and where to change things**.
 
 ---
@@ -45,6 +45,7 @@ L4 Data        <course>/记忆/data/{L1,L2,L3,state}
 | `retrieve.py` | retrieval | `index`/`sync`/`search`/`eval`/`stats`/`add`; BM25, CJK bigrams |
 | `parsers.py` | material parsing layer | engine registry (probe + reader per engine) + per-extension chains + generic fallback; skips unreadable files with reasons |
 | `artifacts.py` | artifact scaffolding | `new` / `list` / `layout` / `check` / `bank` / `link` |
+| `mcp_server.py` | MCP transport shell | stdio JSON-RPC 2.0; tools `boot`/`note`/`search`/`record`/`due`, resources `studyloop://profile`, `studyloop://due`; **no business logic, forwards to the scripts** |
 | `brief.py` | generation-input assembly | materials + mastery + errors + progress → `记录/brief-*.md` |
 | `probe.py` | self-check | environment, data volume, suggested route |
 | `setup_config.py` | write machine config | `config.json` |
@@ -57,6 +58,7 @@ L4 Data        <course>/记忆/data/{L1,L2,L3,state}
 Change a field name only after changing this section.
 
 ### L1 · raw trace (append-only, never modified)
+Two sources share the file: hook/CLI ingest (`source` absent, full `msg_ids`) and agent summaries (`source: "agent-note"`, `msg_count: 0`, `turn_key` for de-duplication). Never present a note as a verbatim transcript.
 ```json
 {"v":1,"turn_id":"trn_...","scope":"default","sid":"ses_...","surface":"chat",
  "started_at":"local ISO","ended_at":"local ISO","msg_ids":["msg_a"],
@@ -83,7 +85,8 @@ Change a field name only after changing this section.
 | `reviews.json` | per knowledge point: half-life, interval, due_at, reps, lapses |
 | `path.json` | knowledge-point path (id/title/done/artifact) |
 | `index.json` | retrieval index (chunks + df + file fingerprints) |
-| `inject-cache.md` | cached injection block |
+| `inject-cache.md` | cached injection block (written by `mem.py boot --out` or the hook) |
+| `hook.json` | hook heartbeat: `last_ingest_at`, `turns`; `boot` reads it to decide whether the agent must record manually |
 
 ### Artifacts
 | Kind | Default location |
@@ -214,10 +217,13 @@ Ordinary directories are never written to. There is **no fallback root** — the
 | `test_bilingual_artifacts.py` | zh/en templates, validation and bank extraction in both languages (13) |
 | `test_path_guard.py` | no writes outside a course; explicit MEMORY_ROOT; probe anywhere (8) |
 | `test_install_paths.py` | installer is path-driven: arbitrary directory names, discovery with 0/1/many candidates, foreign-file refusal, forced backup, dry-run (22) |
+| `test_boot_note.py` | boot injection + channel status, note with de-duplication, audit gaps (23) |
+| `test_rules_block.py` | contract block: create, append, idempotent update, remove, no parent creation (17) |
+| `test_mcp.py` | MCP handshake, tool list, forwarded calls, resources, error paths (15) |
 | `test_workspace.mjs` | course binding (5) |
 | `test_no_workspace.mjs` | no writes outside a course (3) |
 
-**217 assertions. Run the full suite before releasing.**
+**272 assertions. Run the full suite before releasing.**
 
 ---
 
@@ -225,7 +231,8 @@ Ordinary directories are never written to. There is **no fallback root** — the
 
 | Version | Date | Content |
 |---|---|---|
-| **2.2.0** | 2026-11-27 | Installer is path-driven, not name-driven: --skills-dir (or STUDYLOOP_SKILLS_DIR, or a single discovered <dir>/skills); no agent enumeration anywhere; --discover lists real candidates; --plugin-dir / --hook-json cover hosts that load plugins or settings.json hooks; refuses to create missing directories or overwrite foreign files |
+| **2.3.0** | 2026-11-27 | Automatic memory no longer depends on hooks: `mem.py boot` (profile + progress + due + channel status), `mem.py note` (agent summary into L1 with `source: agent-note` and `turn_key` de-duplication), `mem.py audit` (days with answers but no record), `install_adapters.py --rules-file` (contract block in the host's instruction file), `mcp_server.py` (stdlib MCP server exposing the same five capabilities), hook heartbeat `state/hook.json` |
+| 2.2.0 | 2026-11-27 | Installer is path-driven, not name-driven: --skills-dir (or STUDYLOOP_SKILLS_DIR, or a single discovered <dir>/skills); no agent enumeration anywhere; --discover lists real candidates; --plugin-dir / --hook-json cover hosts that load plugins or settings.json hooks; refuses to create missing directories or overwrite foreign files |
 | 2.1.0 | 2026-11-27 | Host-neutral installer: installs into one named host only (--target, auto-detected), never creates another agent's config root, refuses to overwrite files it does not own (exit 3) and backs up before --force; installed files carry an ownership marker; WorkBuddy / generic hosts get the skill plus manual inject/ingest instructions |
 | 2.0.2 | 2026-11-27 | Renamed to StudyLoop (repository yuliang630/studyloop); the name now states what the plugin does — search, answer, grade, review, generate as one loop. No behaviour change. |
 | 2.0.1 | 2026-11-27 | Bilingual README and bilingual artifact templates plus validator (zh/en section names and answer labels); English documentation and bilingual skill triggers; parsing layer rebuilt as an engine registry (about 20 optional engines, built-in html/ipynb/epub, text sniffing and generic converters); **no fallback memory root** — the CLI exits 2 outside a course; `config.json` no longer records machine paths; references installed together with the skill; MIT `LICENSE` |

@@ -128,7 +128,44 @@ python <PACK>\core\scripts\path.py done --id 01 # mark a lesson as passed
 
 ## 4. Memory
 
-- Every turn is written to `记忆\data\L1` **automatically by the plugin hook**; do not write it by hand.
+### Start of session: one command
+
+```bash
+python <PACK>\core\scripts\mem.py boot
+```
+
+It returns the learner profile, progress, due reviews — **and tells you whether a hook is doing the recording for you**. Follow that line:
+
+| The `记忆通道` line says | What you do at the end of the turn |
+|---|---|
+| 钩子 工作中 | nothing; the hook already wrote L1 |
+| 未检测到钩子 / 未工作 | run `mem.py note --text "<one-line summary>"` |
+| MCP | call `studyloop_note` (the tool, not the CLI) |
+
+### Recording when there is no hook
+
+```bash
+python <PACK>\core\scripts\mem.py note --text "what was asked, what was done, what the result was"
+```
+
+- `note` writes an L1 record with `source: agent-note` — it is **your summary, not the raw transcript**; never present it as a verbatim record.
+- Repeating the same `sid` + text is de-duplicated by `turn_key`; `--force` overrides that.
+- If the host gives you a transcript file, prefer the real thing:
+
+```bash
+python <PACK>\core\scripts\mem.py ingest --file <transcript> --sid <session>
+```
+
+### Checking what actually got recorded
+
+```bash
+python <PACK>\core\scripts\mem.py audit --days 7
+```
+
+It compares answers (`attempts.jsonl`) against L1 and names the days with no record. **When audit reports a gap, say so** — do not let the learner believe memory was kept when it was not.
+
+### L2 facts
+
 - Only conclusions worth keeping long term (not process) go into L2, and each must carry evidence:
 
 ```bash

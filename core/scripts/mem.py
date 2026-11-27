@@ -492,9 +492,8 @@ def build_progress_block(root: str) -> str:
     return "## 学习进度\n" + "\n".join(lines)
 
 
-def cmd_inject(args) -> int:
-    """输出可被注入 system 的记忆块（stdout）。任何能调命令的 agent 都能用。"""
-    scope = scope_of(args)
+def build_inject_block(scope: str, chars: int) -> str:
+    """拼出可注入的记忆块（不含通道状态）。"""
     profile_path = os.path.join(L3_DIR, scope, "profile.md")
     recent_path = os.path.join(L3_DIR, scope, "recent.md")
     profile = ""
@@ -508,8 +507,7 @@ def cmd_inject(args) -> int:
                     recent = f.read()
     progress = build_progress_block(ROOT)
     if not profile.strip() and not recent.strip() and not progress:
-        print("（记忆库尚未建立）")
-        return 0
+        return "（记忆库尚未建立）"
     parts = ["【记忆库·自动注入】", "以下是当前 scope 的历史记忆，仅供保持连续性；与用户本轮要求冲突时，以本轮要求为准。"]
     if profile.strip():
         parts.append("## 画像\n" + profile.strip())
@@ -518,9 +516,14 @@ def cmd_inject(args) -> int:
     if progress:
         parts.append(progress)
     block = "\n\n".join(parts)
-    limit = args.chars
-    if len(block) > limit:
-        block = block[:limit] + "\n…[记忆已截断]"
+    if len(block) > chars:
+        block = block[:chars] + "\n…[记忆已截断]"
+    return block
+
+
+def cmd_inject(args) -> int:
+    """输出可被注入 system 的记忆块（stdout）。任何能调命令的 agent 都能用。"""
+    block = build_inject_block(scope_of(args), args.chars)
     if args.out:
         target = args.out
         os.makedirs(os.path.dirname(os.path.abspath(target)), exist_ok=True)
@@ -673,6 +676,209 @@ def _ingest(args) -> int:
     return 0
 
 
+def hook_heartbeat() -> dict:
+    path = os.path.join(STATE_DIR, "hook.json")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def channel_status(transport: str = "") -> tuple[str, str]:
+    """返回 (通道说明, 本轮动作)。有钩子、有 MCP、都没有，各自该干什么。"""
+    if transport == "mcp":
+        return "MCP（本次调用来自 MCP 服务端）", "开课已注入；本轮结束调 studyloop_note"
+    hb = hook_heartbeat()
+    ts = parse_iso(hb.get("last_ingest_at", ""))
+    if ts:
+        now = dt.datetime.now(ts.tzinfo) if ts.tzinfo else dt.datetime.now()
+        minutes = int((now - ts).total_seconds() // 60)
+        turns = hb.get("turns", "?")
+        if minutes <= 60:
+            return (f"钩子 工作中（{minutes} 分钟前，已记 {turns} 轮）",
+                    "本轮结束不需要手动记账")
+        days = minutes // 1440
+        age = f"{days} 天前" if days else f"{minutes // 60} 小时前"
+        return (f"钩子 未工作（最后写入 {age}）",
+                '本轮结束请跑 mem.py note --text "<一句话总结>"')
+    return ("未检测到钩子", '本轮结束请跑 mem.py note --text "<一句话总结>"')
+
+
+def cmd_boot(args) -> int:
+    """一条命令完成开课注入：记忆块 + 通道状态 + 本轮该做什么。"""
+    scope = scope_of(args)
+    ensure_tree(scope)
+    block = build_inject_block(scope, args.chars)
+    status, action = channel_status(getattr(args, "transport", "") or "")
+
+    if args.out:
+        target = args.out
+        os.makedirs(os.path.dirname(os.path.abspath(target)), exist_ok=True)
+        tmp = target + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(block + "\n")
+        os.replace(tmp, target)
+        print(f"[ok] 注入缓存已写入 {os.path.relpath(target, ROOT) if target.startswith(ROOT) else target}")
+        print(f"     通道：{status}")
+        print(f"     本轮动作：{action}")
+        return 0
+
+    print(block)
+    print()
+    print("== 记忆通道 ==")
+    print(f"通道        {status}")
+    print(f"本轮动作    {action}")
+    return 0
+
+
+def _turn_key(sid: str, text: str) -> str:
+    import hashlib
+    return hashlib.sha256((sid + "\n" + text).encode("utf-8")).hexdigest()[:16]
+
+
+def cmd_note(args) -> int:
+    """无钩子宿主的记账通道：写一条 L1，来源标 agent-note，按内容去重。"""
+    scope = scope_of(args)
+    ensure_tree(scope)
+    text = (args.text or "").strip()
+    if not text:
+        print("[error] --text 不能为空", file=sys.stderr)
+        return 2
+
+    sid = args.sid or os.environ.get("STUDYLOOP_SID") or "agent"
+    key = _turn_key(sid, text)
+    if not args.force:
+        for rec in read_l1(scope):
+            if rec.get("turn_key") == key:
+                print(f"[skip] 该轮已记账（{rec.get('turn_id')}），不重复写入")
+                return 0
+
+    now = dt.datetime.now(dt.timezone.utc)
+    rec = {
+        "v": 1,
+        "turn_id": "trn_" + now.strftime("%Y%m%d_") + os.urandom(4).hex(),
+        "turn_key": key,
+        "scope": scope,
+        "sid": sid,
+        "surface": args.surface or "agent-note",
+        "source": "agent-note",
+        "started_at": now.astimezone().isoformat(),
+        "ended_at": now.astimezone().isoformat(),
+        "msg_ids": [],
+        "msg_count": 0,
+        "excerpt": text[:800],
+    }
+    path = os.path.join(L1_DIR, now.astimezone().strftime("%Y-%m-%d") + ".jsonl")
+    with open(path, "a", encoding="utf-8", errors="replace") as f:
+        f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    print(f"[ok] 已记账 {rec['turn_id']}（来源 agent-note，sid={sid}）")
+
+    out_path = getattr(args, "refresh_out", None)
+    if out_path:
+        try:
+            cmd_inject(argparse.Namespace(scope=scope, chars=1500, out=out_path))
+        except Exception as exc:
+            print(f"[warn] 刷新注入缓存失败: {exc}", file=sys.stderr)
+    return 0
+
+
+def _read_attempt_times() -> list[dt.datetime]:
+    path = os.path.join(STATE_DIR, "attempts.jsonl")
+    out: list[dt.datetime] = []
+    try:
+        with open(path, "r", encoding="utf-8-sig") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except Exception:
+                    continue
+                t = parse_iso(str(rec.get("ts", "")))
+                if t:
+                    out.append(t)
+    except Exception:
+        pass
+    return out
+
+
+def cmd_audit(args) -> int:
+    """对账：哪些天做了题却没有对话记录，哪些轮次只是 agent 自述。"""
+    days = args.days
+    now = dt.datetime.now(dt.timezone.utc)
+    cutoff = now - dt.timedelta(days=days)
+
+    rows = [r for r in read_l1() if (parse_iso(r.get("ended_at") or "") or cutoff) >= cutoff]
+    by_day: dict[str, dict[str, int]] = {}
+    for r in rows:
+        t = parse_iso(r.get("ended_at") or "")
+        if not t:
+            continue
+        day = t.astimezone().strftime("%Y-%m-%d")
+        slot = by_day.setdefault(day, {"ingest": 0, "note": 0})
+        if r.get("source") == "agent-note":
+            slot["note"] += 1
+        else:
+            slot["ingest"] += 1
+
+    att_by_day: dict[str, int] = {}
+    for t in _read_attempt_times():
+        if t >= cutoff:
+            att_by_day[t.astimezone().strftime("%Y-%m-%d")] = \
+                att_by_day.get(t.astimezone().strftime("%Y-%m-%d"), 0) + 1
+
+    all_days = sorted(set(by_day) | set(att_by_day))
+    gaps = [d for d in all_days if att_by_day.get(d, 0) > 0 and not by_day.get(d)]
+
+    sids: dict[str, dict] = {}
+    for r in rows:
+        sid = str(r.get("sid") or "?")
+        slot = sids.setdefault(sid, {"turns": 0, "notes": 0, "last": ""})
+        slot["turns"] += 1
+        if r.get("source") == "agent-note":
+            slot["notes"] += 1
+        ts = str(r.get("ended_at") or "")
+        if ts > slot["last"]:
+            slot["last"] = ts
+
+    if args.json:
+        print(json.dumps({
+            "days": days,
+            "days_table": all_days,
+            "by_day": by_day,
+            "attempts_by_day": att_by_day,
+            "gaps": gaps,
+            "sessions": sids,
+        }, ensure_ascii=False, indent=2))
+        return 0
+
+    print(f"== 对账（最近 {days} 天）==")
+    if not all_days:
+        print("  没有记录。")
+        return 0
+    print(f"{'日期':<12}{'原始记录':>8}{'agent 自述':>10}{'作答':>6}  备注")
+    for d in all_days:
+        slot = by_day.get(d, {"ingest": 0, "note": 0})
+        att = att_by_day.get(d, 0)
+        note = ""
+        if att and not (slot["ingest"] + slot["note"]):
+            note = "有作答但没有对话记录 ← 缺账"
+        elif slot["note"] and not slot["ingest"]:
+            note = "只有自述记录"
+        print(f"{d:<12}{slot['ingest']:>8}{slot['note']:>10}{att:>6}  {note}")
+
+    if gaps:
+        print()
+        print(f"缺账 {len(gaps)} 天：{', '.join(gaps)}")
+        print("  补法：把该天的对话文件跑一次 `mem.py ingest --file <文件>`；拿不到就 `mem.py note --text …`")
+    else:
+        print()
+        print("没有发现缺账。")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="mem.py", description="记忆库维护工具")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -687,9 +893,25 @@ def build_parser() -> argparse.ArgumentParser:
         ("forget", cmd_forget),
         ("inject", cmd_inject),
         ("ingest", cmd_ingest),
+        ("boot", cmd_boot),
+        ("note", cmd_note),
+        ("audit", cmd_audit),
     ):
         sp = sub.add_parser(name)
         sp.add_argument("--scope", default=None)
+        if name == "boot":
+            sp.add_argument("--chars", type=int, default=1500)
+            sp.add_argument("--out", default=None, help="把注入缓存写到这里（agent 直接读文件）")
+            sp.add_argument("--transport", default=None, help="mcp / 留空自动判断")
+        if name == "note":
+            sp.add_argument("--text", required=True)
+            sp.add_argument("--sid", default=None)
+            sp.add_argument("--surface", default="agent-note")
+            sp.add_argument("--force", action="store_true", help="忽略去重，强制写入")
+            sp.add_argument("--refresh-out", default=None, help="写入后顺带刷新注入缓存")
+        if name == "audit":
+            sp.add_argument("--days", type=int, default=7)
+            sp.add_argument("--json", action="store_true")
         if name == "forget":
             sp.add_argument("--sid", default=None)
             sp.add_argument("--turn", default=None)

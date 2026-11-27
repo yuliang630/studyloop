@@ -37,7 +37,76 @@ HOME = os.path.expanduser("~")
 MARK_TS = "// @studyloop-managed"
 MARK_MD = "<!-- @studyloop-managed -->"
 
+BLOCK_BEGIN = "<!-- studyloop:begin -->"
+BLOCK_END = "<!-- studyloop:end -->"
+
 ENV_SKILLS = "STUDYLOOP_SKILLS_DIR"
+
+
+def rules_block() -> str:
+    """写进宿主指令文件的契约块：短、可执行、可撤销。"""
+    mem = os.path.join(PACK, "core", "scripts", "mem.py")
+    ret = os.path.join(PACK, "core", "scripts", "retrieve.py")
+    pr = os.path.join(PACK, "core", "scripts", "practice.py")
+    art = os.path.join(PACK, "core", "scripts", "artifacts.py")
+    return "\n".join([
+        BLOCK_BEGIN,
+        "## StudyLoop 记忆契约",
+        "",
+        f"1. 会话第一条消息前：`python \"{mem}\" boot`，把输出当上下文；它会说明本轮结束要不要手动记账。",
+        f"2. 回答课程内容前：`python \"{ret}\" search \"<关键词>\"`，标来源；未命中就直说没有。",
+        f"3. 判分后：`python \"{pr}\" record --kp \"…\" --type … --result …`（用了提示要记 --hints）。",
+        f"4. 出产物前先 `python \"{art}\" layout`，写完必须 `python \"{art}\" check <文件>`。",
+        f"5. 结束一轮：按第 1 步的提示跑 `python \"{mem}\" note --text \"<一句话：问了什么、做了什么>\"`；拿不到原始对话就只写 note，不编造。",
+        "6. 当前目录没有 `.study-workspace` 时，以上全部跳过，不要写入任何记忆。",
+        BLOCK_END,
+    ])
+
+
+def upsert_rules(path: str, dry: bool, res: Result) -> None:
+    block = rules_block()
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8-sig") as f:
+            old = f.read()
+        if BLOCK_BEGIN in old and BLOCK_END in old:
+            head, rest = old.split(BLOCK_BEGIN, 1)
+            _mid, tail = rest.split(BLOCK_END, 1)
+            new = head + block + tail
+        else:
+            sep = "" if old.endswith("\n\n") else ("\n" if old.endswith("\n") else "\n\n")
+            new = old + sep + block + "\n"
+    else:
+        parent = os.path.dirname(os.path.abspath(path))
+        if not os.path.isdir(parent):
+            res.skipped.append(f"{path}（上级目录不存在，不替你创建）")
+            return
+        new = block + "\n"
+    if dry:
+        res.written.append(path)
+        return
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        f.write(new)
+    res.written.append(path)
+
+
+def remove_rules(path: str, dry: bool, res: Result) -> None:
+    if not os.path.exists(path):
+        res.skipped.append(f"{path}（文件不存在）")
+        return
+    with open(path, "r", encoding="utf-8-sig") as f:
+        old = f.read()
+    if BLOCK_BEGIN not in old or BLOCK_END not in old:
+        res.skipped.append(f"{path}（没有契约块，未改动）")
+        return
+    head, rest = old.split(BLOCK_BEGIN, 1)
+    _mid, tail = rest.split(BLOCK_END, 1)
+    new = (head.rstrip("\n") + "\n" + tail.lstrip("\n")) if head.strip() else tail.lstrip("\n")
+    if dry:
+        res.written.append(path + "（将删除契约块）")
+        return
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        f.write(new)
+    res.written.append(path + "（已删除契约块）")
 
 
 def candidates() -> list[str]:
@@ -160,11 +229,17 @@ def show_hook_json() -> None:
 
 
 def print_manual(skills_dir: str | None) -> None:
+    mem = os.path.join(PACK, "core", "scripts", "mem.py")
     print()
-    print("  手动用法（宿主没有钩子能力时）：")
-    print(f"    python {os.path.join(PACK, 'core', 'scripts', 'mem.py')} inject")
-    print(f"    python {os.path.join(PACK, 'core', 'scripts', 'mem.py')} ingest --file <对话记录文件>")
+    print("  手动用法（宿主没有钩子、也没有 MCP 时）：")
+    print(f"    开课  python \"{mem}\" boot")
+    print(f"    结束  python \"{mem}\" note --text \"<一句话总结>\"")
+    print(f"    补录  python \"{mem}\" ingest --file <对话记录文件>")
     print("  其余命令（检索、判分、出题）在任何能跑命令的宿主里都一样。")
+    print()
+    print("  支持 MCP 的宿主，可以直接把服务端挂上去（无需按宿主写代码）：")
+    print('    {"mcpServers":{"studyloop":{"command":"python",')
+    print(f'      "args":["{os.path.join(PACK, "core", "scripts", "mcp_server.py")}"]}}}}')
     if skills_dir:
         print(f"  技能目录：{skills_dir}")
 
@@ -188,6 +263,8 @@ def main() -> int:
         description="把 StudyLoop 装进你指定的技能目录；不认 agent 名字，只认路径。")
     p.add_argument("--skills-dir", default=None, help="技能安装目录（任意宿主的目录都行）")
     p.add_argument("--plugin-dir", default=None, help="可选：把钩子文件放进这个目录（宿主从目录加载插件时用）")
+    p.add_argument("--rules-file", default=None, help="可选：把会话契约写进宿主的指令文件（AGENTS.md 等）")
+    p.add_argument("--remove-rules", action="store_true", help="从指令文件里删除契约块")
     p.add_argument("--hook-json", action="store_true", help="可选：打印 settings.json 风格的钩子片段")
     p.add_argument("--discover", action="store_true", help="只列出本机候选技能目录，不安装")
     p.add_argument("--force", action="store_true", help="覆盖不是本插件写的同名文件（会先备份）")
@@ -205,28 +282,44 @@ def main() -> int:
             print("  （没找到；用 --skills-dir 指定你宿主读技能的位置）")
         return 0
 
-    skills_dir, source = pick_skills_dir(args.skills_dir)
-    if not skills_dir:
-        found = candidates()
-        print("没有指定技能目录，也没有唯一候选；不写任何文件。")
-        if found:
-            print("本机找到多个候选，请挑一个：")
-            for d in found:
-                print(f"  --skills-dir \"{d}\"")
-        else:
-            print("本机没找到候选。告诉你宿主的技能目录在哪，然后：")
-            print("  --skills-dir <该目录>")
-        print_manual(None)
-        return 0
-
-    if not os.path.isdir(skills_dir):
-        print(f"[error] 技能目录不存在：{skills_dir}", file=sys.stderr)
-        print("        不替你创建目录（避免误把你宿主的目录结构带歪）。", file=sys.stderr)
+    if args.remove_rules and not args.rules_file:
+        print("[error] --remove-rules 需要同时给 --rules-file", file=sys.stderr)
         return 2
 
-    print(f"技能目录    {skills_dir}（来源：{source}）")
     res = Result()
-    install_skills(skills_dir, args.force, args.dry_run, res)
+    touched = False
+
+    if args.rules_file:
+        print(f"指令文件    {args.rules_file}")
+        if args.remove_rules:
+            remove_rules(args.rules_file, args.dry_run, res)
+        else:
+            upsert_rules(args.rules_file, args.dry_run, res)
+        touched = True
+
+    skills_dir = ""
+    if args.skills_dir or os.environ.get(ENV_SKILLS) or (not args.rules_file):
+        skills_dir, source = pick_skills_dir(args.skills_dir)
+        if skills_dir:
+            if not os.path.isdir(skills_dir):
+                print(f"[error] 技能目录不存在：{skills_dir}", file=sys.stderr)
+                print("        不替你创建目录（避免误把你宿主的目录结构带歪）。", file=sys.stderr)
+                return 2
+            print(f"技能目录    {skills_dir}（来源：{source}）")
+            install_skills(skills_dir, args.force, args.dry_run, res)
+            touched = True
+        elif not args.rules_file:
+            found = candidates()
+            print("没有指定技能目录，也没有唯一候选；不写任何文件。")
+            if found:
+                print("本机找到多个候选，请挑一个：")
+                for d in found:
+                    print(f"  --skills-dir \"{d}\"")
+            else:
+                print("本机没找到候选。告诉你宿主的技能目录在哪，然后：")
+                print("  --skills-dir <该目录>")
+            print_manual(None)
+            return 0
 
     if args.plugin_dir:
         if not os.path.isdir(args.plugin_dir):
@@ -234,11 +327,15 @@ def main() -> int:
             return 2
         print(f"插件目录    {args.plugin_dir}")
         install_plugin(args.plugin_dir, args.force, args.dry_run, res)
-    else:
-        print("钩子        未指定 --plugin-dir，跳过（技能本身不依赖钩子）")
+        touched = True
 
     if args.hook_json:
         show_hook_json()
+
+    if not touched:
+        print("没有可执行的动作。至少给 --skills-dir 或 --rules-file 之一。")
+        print_manual(None)
+        return 0
 
     print()
     for path in res.written:
