@@ -1,3 +1,5 @@
+<!-- @studyloop-managed -->
+
 # Workspace layout convention
 
 This file defines **where things go inside a course working directory**. The plugin does not create the course folder for you, but you must follow this convention when writing, otherwise artifacts scatter.

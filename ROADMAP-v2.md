@@ -195,4 +195,6 @@ Recorded here because the change process requires it. None of these touch `mem.p
 
 Released as **2.0.2** afterwards: the pack and the repository were renamed `StudyPack` → `StudyLoop` (`yuliang630/studyloop`). The old name described the container; the new one describes the mechanism — search, answer, grade, review, generate as a single loop. No behaviour change; local installs must re-run `setup_config.py` and `install_adapters.py` because the pack path moved.
 
+Released as **2.1.0**: the installer is host-neutral. It used to install into OpenCode whenever `~/.config/opencode` existed, which meant a WorkBuddy user's install also wrote into their OpenCode config — and it overwrote `memory.ts` unconditionally. Now `--target` names one host, auto-detection only looks at the running environment, an unknown host means "print instructions, write nothing", files carry an ownership marker, foreign files are refused (exit 3), and `--force` backs up first. Hosts without hook support get the skill plus printed `mem.py inject` / `ingest` steps.
+
 New tests: `test_parsers_registry.py` (18), `test_e2e_formats.py` (4), `test_bilingual_artifacts.py` (13), `test_path_guard.py` (8). Total 195, all green.

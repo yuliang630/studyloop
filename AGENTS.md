@@ -20,16 +20,21 @@ python -V
 
 ```powershell
 cd <pack-directory>
-python core\scripts\setup_config.py        # optional: writes local preferences only (no machine paths)
-python core\scripts\install_adapters.py    # installs the OpenCode plugin and skill (replaces <PACK>)
-python core\scripts\probe.py               # self-check: environment, data, suggested route
+python core\scripts\setup_config.py              # optional local preferences (no machine paths)
+python core\scripts\install_adapters.py          # installs into the host it can identify; no target = auto
+python core\scripts\probe.py                     # self-check: environment, data, parsing capability
 ```
 
-`install_adapters.py` does two things:
-1. copies `adapters\opencode\memory.ts` into `%USERPROFILE%\.config\opencode\plugins\`, replacing `__PACK_ROOT__`
-2. copies `core\skills\study-loop\SKILL.md` into `%USERPROFILE%\.config\opencode\skills\study-loop\`, replacing `<PACK>`
+`install_adapters.py` rules — do not work around them:
 
-**Restart the agent afterwards**, otherwise the hooks will not load.
+1. It installs **one** host, named by `--target opencode|claude|workbuddy|generic|none`, or auto-detected from the running environment. If detection fails it **prints instructions and writes nothing**.
+2. It never creates another agent's config root; it writes only inside a root that already exists.
+3. It never overwrites a file it does not own: the target must contain the `@studyloop-managed` marker. Otherwise it reports a conflict and exits **3**. `--force` overwrites, but saves `<name>.bak-<timestamp>` first.
+4. For a host with no known skill directory: `--target generic --skills-dir <path>`.
+
+**Restart the agent afterwards** (only if a hook was installed), otherwise hooks will not load.
+
+Upgrading from 2.0.x: the old installer wrote no ownership marker, so the first run reports a conflict and exits 3. After confirming those files are the ones this pack installed, run once with `--force`; each file is backed up first.
 
 Without OpenCode: use `adapters\claude-code\hooks.json` (merge into `settings.json` manually), or run the command line directly (`adapters\generic\README.md`).
 

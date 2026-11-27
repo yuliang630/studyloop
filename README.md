@@ -8,7 +8,7 @@
 
 没有界面，不捆运行时，必需依赖只有 Python 3.11+。
 
-当前版本 **2.0.2**，MIT 许可。
+当前版本 **2.1.0**，MIT 许可。
 
 ---
 
@@ -54,7 +54,7 @@
 双击 install.bat
 ```
 
-它会检查 Python 版本、写可选配置、把适配器装进检测到的 agent（OpenCode）。
+它会检查 Python 版本、写可选配置，然后**只给当前正在运行的这个 agent** 装插件与技能。装完重启 agent。
 
 ### 方式二：手动三步
 
@@ -62,12 +62,30 @@
 # 1. 写可选的本机偏好（不记录任何本机绝对路径）
 python core\scripts\setup_config.py
 
-# 2. 装 OpenCode 插件与技能（不用 OpenCode 可跳过）
-python core\scripts\install_adapters.py
+# 2. 装进你指定的 agent（不给 --target 就按当前环境自动判断）
+python core\scripts\install_adapters.py --target auto
 
 # 3. 自检
 python core\scripts\probe.py
 ```
+
+`--target` 可选：`auto` / `opencode` / `claude` / `workbuddy` / `generic` / `none`。
+
+| 规矩 | 说明 |
+|---|---|
+| 只装一个宿主 | 判断不出当前是谁，就只打印说明，什么都不写；不会"探测到谁就顺手给谁装" |
+| 不新建别人的目录 | 只在**已经存在**的宿主配置根里写；本机没装那个 agent 就跳过 |
+| 不覆盖别人的文件 | 目标文件里没有本插件的标记（`@studyloop-managed`）就不动，报冲突并以退出码 3 结束 |
+| 强制覆盖有备份 | 加 `--force` 才覆盖，覆盖前自动备份成 `<文件名>.bak-<时间戳>` |
+| 任意 agent 可用 | 核心是命令行；宿主没有钩子能力（如 WorkBuddy）就只装技能，并打印手动 `mem.py inject` / `ingest` 的方法 |
+
+通用宿主（没有约定的技能目录）用：
+
+```powershell
+python core\scripts\install_adapters.py --target generic --skills-dir "D:\my-agent\skills"
+```
+
+**从 2.0.x 升级**：旧版装进去的文件没有归属标记，第一次会被判为"别人的文件"并报冲突（退出码 3）。确认那些文件确实是本插件以前装的，加一次 `--force` 即可，旧文件会先备份成 `.bak-<时间戳>`。
 
 Claude Code / CodeBuddy 系：把 `adapters\claude-code\hooks.json` 的内容合并进它的 `settings.json` 的 `hooks` 字段，并把里面的 `__PACK_ROOT__` 换成这个包的实际路径。
 
@@ -277,6 +295,9 @@ studyloop\
 **能配别的 agent 吗？**
 能。内核是命令行工具，任何能跑命令的 agent 都能用；钩子只是自动化外壳。
 
+**会不会动我别的 agent 的配置？**
+不会。安装器只写你用 `--target` 指明的那个宿主；判断不出当前宿主时只打印说明、一个字节都不写；目标文件不是本插件写的（没有 `@studyloop-managed` 标记）就不覆盖，只报冲突并退出 3。
+
 ---
 
 ## 许可与第三方
@@ -297,7 +318,7 @@ A learning plugin for AI agents. It runs inside the chat: **remember** (memory),
 
 No UI. No bundled runtime. The only requirement is Python 3.11+.
 
-Version **2.0.2**, MIT licence.
+Version **2.1.0**, MIT licence.
 
 ---
 
@@ -343,7 +364,7 @@ Bare Python is usable: md / txt / html / ipynb / epub all work. Optional engines
 double-click install.bat
 ```
 
-It checks the Python version, writes optional local preferences, and installs the adapter into any detected agent (OpenCode).
+It checks the Python version, writes optional local preferences, then installs the plugin and skill **only into the agent that is running it**. Restart the agent afterwards.
 
 ### Option 2: manual (three steps)
 
@@ -351,12 +372,30 @@ It checks the Python version, writes optional local preferences, and installs th
 # 1. write optional local preferences (no machine paths are stored)
 python core\scripts\setup_config.py
 
-# 2. install the OpenCode adapter + skill (skip if you do not use OpenCode)
-python core\scripts\install_adapters.py
+# 2. install into the agent you name (auto = detect the running host)
+python core\scripts\install_adapters.py --target auto
 
 # 3. self-check
 python core\scripts\probe.py
 ```
+
+`--target` accepts `auto` / `opencode` / `claude` / `workbuddy` / `generic` / `none`.
+
+| Rule | What it means |
+|---|---|
+| One host only | If the running host cannot be identified, it prints instructions and writes nothing. It never installs into every agent it happens to detect |
+| Never creates another agent's directory | It only writes inside a host config root that **already exists** |
+| Never overwrites a foreign file | If the target file lacks the `@studyloop-managed` marker, it is left alone, a conflict is reported, and the exit code is 3 |
+| Forced overwrite keeps a backup | `--force` overwrites only after saving `<name>.bak-<timestamp>` |
+| Works with any agent | The core is a CLI. Hosts without hook support (e.g. WorkBuddy) get the skill plus printed instructions for manual `mem.py inject` / `ingest` |
+
+For an agent with no known skill directory:
+
+```powershell
+python core\scripts\install_adapters.py --target generic --skills-dir "D:\my-agent\skills"
+```
+
+**Upgrading from 2.0.x:** files installed by the old version carry no ownership marker, so the first run reports a conflict (exit 3). Once you have confirmed those files really are the ones the plugin installed earlier, run once with `--force`; each old file is backed up as `.bak-<timestamp>` first.
 
 For Claude Code / CodeBuddy: merge the contents of `adapters\claude-code\hooks.json` into the `hooks` field of its `settings.json`, and replace `__PACK_ROOT__` with the real path of this pack.
 
@@ -565,6 +604,9 @@ Run `probe.py` and look at the "material parsing capability" block. If every PDF
 
 **Can I use it with a different agent?**
 Yes. The core is a command-line tool; any agent that can run commands can use it. Hooks are only the automation shell.
+
+**Will installing touch my other agents?**
+No. The installer writes only into the host you name with `--target`. If it cannot identify the running host it prints instructions and writes nothing. A target file that is not ours (no `@studyloop-managed` marker) is never overwritten — it reports a conflict and exits 3.
 
 ---
 

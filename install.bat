@@ -28,26 +28,27 @@ if errorlevel 1 (
 echo [OK] Python version:
 python -V
 
-REM ---- 2. Write config ----
+REM ---- 2. Write optional preferences ----
 echo.
 python "core\scripts\setup_config.py"
-if errorlevel 1 (
-  echo [ERROR] Failed to write config.json.
-  pause
-  exit /b 1
-)
 
-REM ---- 3. Install adapters ----
+REM ---- 3. Install into the agent that is running this, nothing else ----
 echo.
-python "core\scripts\install_adapters.py"
+python "core\scripts\install_adapters.py" --target auto
+set INSTALL_RC=%errorlevel%
 
 echo.
 echo ============================================
-echo   Done.
+if "%INSTALL_RC%"=="3" (
+  echo   Done, but some files were NOT overwritten.
+  echo   Read the [conflict] lines above, then re-run with --force if you are sure.
+) else (
+  echo   Done.
+)
 echo   Next steps:
 echo     1. Create a course folder yourself and add a .study-workspace file
 echo        (see README.md, section "Start a course")
 echo     2. Open that folder with your agent, or use the CLI directly
-echo     3. Restart the agent so the hooks load
+echo     3. Restart the agent so the hooks load (if a hook was installed)
 echo ============================================
 pause

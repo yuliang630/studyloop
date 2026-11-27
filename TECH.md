@@ -1,6 +1,6 @@
 # StudyLoop · Technical Reference
 
-> Version 2.0.2 · 2026-11-27
+> Version 2.1.0 · 2026-11-27
 > Audience: developers and agents who will maintain or iterate on this pack. Read this to understand **what it is, how it is organized, how it runs, and where to change things**.
 
 ---
@@ -48,7 +48,7 @@ L4 Data        <course>/记忆/data/{L1,L2,L3,state}
 | `brief.py` | generation-input assembly | materials + mastery + errors + progress → `记录/brief-*.md` |
 | `probe.py` | self-check | environment, data volume, suggested route |
 | `setup_config.py` | write machine config | `config.json` |
-| `install_adapters.py` | deploy adapters and skill | copies plugin, replaces `__PACK_ROOT__` and `<PACK>` |
+| `install_adapters.py` | deploy into one named host | `--target auto|opencode|claude|workbuddy|generic|none`; never creates another host root, never overwrites a file without the `@studyloop-managed` marker (exit 3), `--force` backs up first |
 
 ---
 
@@ -213,10 +213,11 @@ Ordinary directories are never written to. There is **no fallback root** — the
 | `test_m4_writeback.py` | bank / link (11) |
 | `test_bilingual_artifacts.py` | zh/en templates, validation and bank extraction in both languages (13) |
 | `test_path_guard.py` | no writes outside a course; explicit MEMORY_ROOT; probe anywhere (8) |
+| `test_install_targets.py` | installer targets: no cross-agent writes, foreign-file refusal, forced backup, generic dir (22) |
 | `test_workspace.mjs` | course binding (5) |
 | `test_no_workspace.mjs` | no writes outside a course (3) |
 
-**195 assertions. Run the full suite before releasing.**
+**217 assertions. Run the full suite before releasing.**
 
 ---
 
@@ -224,7 +225,8 @@ Ordinary directories are never written to. There is **no fallback root** — the
 
 | Version | Date | Content |
 |---|---|---|
-| **2.0.2** | 2026-11-27 | Renamed to StudyLoop (repository yuliang630/studyloop); the name now states what the plugin does — search, answer, grade, review, generate as one loop. No behaviour change. |
+| **2.1.0** | 2026-11-27 | Host-neutral installer: installs into one named host only (--target, auto-detected), never creates another agent's config root, refuses to overwrite files it does not own (exit 3) and backs up before --force; installed files carry an ownership marker; WorkBuddy / generic hosts get the skill plus manual inject/ingest instructions |
+| 2.0.2 | 2026-11-27 | Renamed to StudyLoop (repository yuliang630/studyloop); the name now states what the plugin does — search, answer, grade, review, generate as one loop. No behaviour change. |
 | 2.0.1 | 2026-11-27 | Bilingual README and bilingual artifact templates plus validator (zh/en section names and answer labels); English documentation and bilingual skill triggers; parsing layer rebuilt as an engine registry (about 20 optional engines, built-in html/ipynb/epub, text sniffing and generic converters); **no fallback memory root** — the CLI exits 2 outside a course; `config.json` no longer records machine paths; references installed together with the skill; MIT `LICENSE` |
 | 2.0.0 | 2026-11-27 | Artifact scaffolding: four templates (exam / lesson / handout / curriculum), `artifacts.py` (new/list/layout/check/bank/link), `brief.py` input assembly; the validator rejects missing sections, insufficient coverage, missing answers, missing score points and missing citations; no new required dependency |
 | 1.2.0 | 2026-11-27 | Material parsing layer: multi-engine priority chains (PDF / DOCX / PPTX / XLSX / images), automatic OCR for scanned pages, `retrieve.py add`, explicit skip reporting |

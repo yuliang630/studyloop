@@ -3,6 +3,8 @@ name: study-loop
 description: Study loop — search the course materials, answer with citations, quiz, grade mastery, then advance or review; also generates exams, lesson plans, handouts and curriculum plans from templates. Use when the user asks for practice, a quiz, to be tested on a topic, asks "what should I learn next" or "how well do I know this", asks a question about the course materials, or asks for an exam paper, lesson plan, handout, slides or curriculum plan, or asks to consolidate the materials into a course. Trigger words (English): practice, quiz, test me, drill, mastery, next lesson, next topic, what should I learn next, did I learn it, what does the book say, exam paper, exam questions, lesson plan, handout, slides, curriculum, course plan, consolidate. Trigger words (Chinese): 练习、测验、考我、做题、掌握度、下一步学什么、我学会了吗、书上怎么说的、出套卷子、出题、考试题、教案、讲义、课件、课程规划、整合教材。
 ---
 
+<!-- @studyloop-managed -->
+
 # Study loop (study-loop)
 
 This directory is a **course workspace**. This skill defines how to search the materials, how to cite, how to grade, and when to advance.
