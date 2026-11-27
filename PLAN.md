@@ -1,9 +1,9 @@
-# StudyLoop · v1 Task Plan (historical record)
+# StudyLoop · Early Task Plan (historical record)
 
-> Version v1.0 · 2026-11-27
+> Written 2026-11-27 · never published as a version
 > **Execution rule: work through this file top to bottom. Mark each item ✅ and record the acceptance result. If acceptance fails, do not start the next item.**
 
-> **Note for readers of this repository:** this file is the v1 development log, kept for traceability. It is not a description of the current version. Some names mentioned here (`new_course.py`, `说明.md`, `D:\学习\...`) no longer exist — they were removed in v2.0. The pack itself was renamed `StudyPack` → `StudyLoop` in 2.0.1; names below keep the original spelling, deliberately. For the current state see `README.md`, `TECH.md` and `ROADMAP-v2.md`.
+> **Note for readers of this repository:** this file is the early development log, kept for traceability. It is not a description of the current version. Some names mentioned here (`new_course.py`, `说明.md`, `D:\学习\...`) no longer exist — they were removed before the first public release. The pack itself was renamed `StudyPack` → `StudyLoop` in the same period; names below keep the original spelling, deliberately. For the current state see `README.md`, `TECH.md` and `ROADMAP.md`.
 
 ---
 
@@ -53,7 +53,7 @@ Course folder (not part of the pack):
 
 ## 2. Tasks and progress
 
-### P7 Review and path (added in v1.1, missing from the original plan)
+### P7 Review and path (added later the same day, missing from the original plan)
 
 | # | Task | Acceptance | Status |
 |---|---|---|---|
@@ -148,7 +148,7 @@ Course folder (not part of the pack):
 | `D:\学习\工具\` | Source of the pack scripts, keep one backup after migration |
 | `D:\memory\` | Even older version, deletable once the new pack works |
 
-All three were deleted in v2.0. This table is kept as history.
+All three were deleted before the first public release. This table is kept as history.
 
 ---
 

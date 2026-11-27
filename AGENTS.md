@@ -35,7 +35,7 @@ python core\scripts\install_adapters.py --skills-dir <one of them> --rules-file 
 
 **Restart the agent afterwards** (only if a hook was installed), otherwise hooks will not load.
 
-Upgrading from 2.0.x: the old installer wrote no ownership marker, so the first run reports a conflict and exits 3. After confirming those files are the ones this pack installed, run once with `--force`; each file is backed up first.
+Upgrading from an earlier pre-release build: those files carry no ownership marker, so the first run reports a conflict and exits 3. After confirming those files are the ones this pack installed, run once with `--force`; each file is backed up first.
 
 Without OpenCode: use `adapters\claude-code\hooks.json` (merge into `settings.json` manually), or run the command line directly (`adapters\generic\README.md`).
 

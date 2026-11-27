@@ -1,6 +1,8 @@
-# StudyLoop v2.0 · Iteration Plan and Roadmap
+# StudyLoop · Iteration Plan and Roadmap
 
-> Started: 2026-11-27 · Owner: the main agent · Status: **complete (M0–M5), 151 regression assertions green**
+> This was the pre-release development plan. Everything described here shipped in the first public release, **0.1.0**.
+
+> Started: 2026-11-27 · Owner: the main agent · Status: **complete; shipped in 0.1.0 with 272 regression assertions green**
 > This file is the single source of truth for this iteration. To change it, follow the change process in section 8.
 
 ---
@@ -33,7 +35,7 @@
 | D3 | `core/skills/study-loop/templates/` | 4 Markdown skeletons | exam / lesson / handout / curriculum |
 | D4 | Write-back | Data contract | Exam questions → question-bank index; lesson/curriculum → linked to `path.json` |
 | D5 | Tests | Scripts | Template rendering, validator positives and negatives, brief assembly |
-| D6 | Documentation | Edits | README command table, TECH module table, VERSION 2.0.0 |
+| D6 | Documentation | Edits | README command table, TECH module table, VERSION.json |
 
 ### Out of scope
 
@@ -57,7 +59,7 @@ M1 artifacts skeleton ──► M2 input assembly ──► M3 validation ──
 | M2 | `brief.py`: assemble the input brief | 1 day | ✅ 13/13: template requirements, material excerpts, learner state, errors, progress, due reviews; runs for all four kinds |
 | M3 | `check`: required sections + coverage matrix + citations + score points | 1 day | ✅ 8/8: positive case passes; missing section, insufficient coverage, missing answer, missing score point, empty citation, unfilled template and a section without a source are all rejected |
 | M4 | Write-back: questions into the bank index; artifacts linked to the path | 0.5 day | ✅ 11/11: three bank rows with complete fields, re-runs add nothing, `link` writes `path.json`, `list` shows the linkage |
-| M5 | Documentation and version 2.0.0, full regression | 0.5 day | ✅ 151 assertions green; README/TECH/VERSION updated; SKILL gained the five-step generation flow and trigger words |
+| M5 | Documentation and release metadata, full regression | 0.5 day | ✅ final suite green (272 assertions); README/TECH/VERSION updated; SKILL gained the five-step generation flow and trigger words |
 
 **4 days total.** No milestone starts until the previous one passes.
 
@@ -110,7 +112,7 @@ M1 artifacts skeleton ──► M2 input assembly ──► M3 validation ──
 |---|---|---|
 | T5.1 | README command table: add the four entries | Documentation |
 | T5.2 | TECH module table and version history | Documentation |
-| T5.3 | VERSION.json → 2.0.0 | File |
+| T5.3 | VERSION.json filled in | File |
 | T5.4 | Full regression | Record |
 
 ---

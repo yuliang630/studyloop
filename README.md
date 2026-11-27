@@ -100,7 +100,7 @@ python core\scripts\install_adapters.py --discover
 
 环境变量也能给目录（适合批量/脚本）：`STUDYLOOP_SKILLS_DIR`。
 
-**从 2.0.x 升级**：旧版装进去的文件没有归属标记，第一次会被判为"别人的文件"并报冲突（退出码 3）。确认那些文件确实是本插件以前装的，加一次 `--force` 即可，旧文件会先备份成 `.bak-<时间戳>`。
+**从更早的预发布版本升级**：那些文件没有归属标记，第一次会被判为"别人的文件"并报冲突（退出码 3）。确认那些文件确实是本插件以前装的，加一次 `--force` 即可，旧文件会先备份成 `.bak-<时间戳>`。
 
 **装完重启 agent**，钩子才会加载（技能不需要重启，新会话读一次即可）。
 
@@ -292,8 +292,8 @@ studyloop\
 ├─ VERSION.json           机器可读清单
 ├─ THIRD_PARTY_NOTICES.md 算法与第三方声明
 ├─ LICENSE                MIT
-├─ PLAN.md                v1 开发记录（历史）
-├─ ROADMAP-v2.md          v2 迭代方案与验收记录
+├─ PLAN.md                早期开发记录（历史）
+├─ ROADMAP.md             迭代方案与验收记录
 ├─ install.bat
 ├─ config.json            可选本机偏好（不含本机路径）
 ├─ core\
@@ -475,7 +475,7 @@ Five hard rules:
 
 The environment variable `STUDYLOOP_SKILLS_DIR` works too, for scripts and batch installs.
 
-**Upgrading from 2.0.x:** files installed by the old version carry no ownership marker, so the first run reports a conflict (exit 3). Once you have confirmed those files really are the ones the plugin installed earlier, run once with `--force`; each old file is backed up as `.bak-<timestamp>` first.
+**Upgrading from an earlier pre-release build:** those files carry no ownership marker, so the first run reports a conflict (exit 3). Once you have confirmed those files really are the ones the plugin installed earlier, run once with `--force`; each old file is backed up as `.bak-<timestamp>` first.
 
 **Restart the agent after installing** so the hook loads (skills are read at the start of the next session).
 
@@ -667,8 +667,8 @@ studyloop\
 ├─ VERSION.json           machine-readable manifest
 ├─ THIRD_PARTY_NOTICES.md algorithm and third-party attribution
 ├─ LICENSE                MIT
-├─ PLAN.md                v1 development record (historical)
-├─ ROADMAP-v2.md          v2 iteration plan and acceptance record
+├─ PLAN.md                early development record (historical)
+├─ ROADMAP.md             iteration plan and acceptance record
 ├─ install.bat
 ├─ config.json            optional local preferences (no machine paths)
 ├─ core\

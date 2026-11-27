@@ -130,7 +130,7 @@ MEMORY_ROOT (environment)  >  <cwd>/记忆 when .study-workspace exists  >  conf
 none of the above → exit code 2 with the reason; nothing is written anywhere
 ```
 
-Ordinary directories are never written to. There is **no fallback root** — the earlier `%LOCALAPPDATA%` fallback root was removed in 2.0.1, because a learning plugin that quietly collects data in an arbitrary directory is a liability. `probe.py` is the one exception: it can run anywhere and simply reports "not located".
+Ordinary directories are never written to. There is **no fallback root** — the earlier `%LOCALAPPDATA%` fallback root was removed before the first public release, because a learning plugin that quietly collects data in an arbitrary directory is a liability. `probe.py` is the one exception: it can run anywhere and simply reports "not located".
 
 ---
 
