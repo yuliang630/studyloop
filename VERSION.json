@@ -1,7 +1,7 @@
 {
   "name": "StudyLoop",
   "display_name": "StudyLoop · 学习闭环 / Personalized Learning Plugin for AI Agents",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "released": "2026-11-27",
   "kind": "agent-extension-pack",
   "summary": "A learning plugin for AI agents: memory, mastery grading, material retrieval, review scheduling, artifact scaffolding.",

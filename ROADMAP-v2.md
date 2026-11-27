@@ -193,4 +193,6 @@ Recorded here because the change process requires it. None of these touch `mem.p
 | Artifact templates and validator made bilingual | A Chinese-only artifact contract made the pack useless to non-Chinese users | `templates/en/`, `ALIASES` in `artifacts.py`, bilingual answer labels (`答案:` / `Answer:`, `评分点:` / `Scoring:`), `new --lang`, workspace `lang` field |
 | README rewritten as a bilingual document | Chinese readers and international readers should each get a complete document | `README.md` (Chinese half + English half) |
 
+Released as **2.0.2** afterwards: the pack and the repository were renamed `StudyPack` → `StudyLoop` (`yuliang630/studyloop`). The old name described the container; the new one describes the mechanism — search, answer, grade, review, generate as a single loop. No behaviour change; local installs must re-run `setup_config.py` and `install_adapters.py` because the pack path moved.
+
 New tests: `test_parsers_registry.py` (18), `test_e2e_formats.py` (4), `test_bilingual_artifacts.py` (13), `test_path_guard.py` (8). Total 195, all green.
