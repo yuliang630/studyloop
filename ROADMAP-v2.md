@@ -1,4 +1,4 @@
-# StudyPack v2.0 · Iteration Plan and Roadmap
+# StudyLoop v2.0 · Iteration Plan and Roadmap
 
 > Started: 2026-11-27 · Owner: the main agent · Status: **complete (M0–M5), 151 regression assertions green**
 > This file is the single source of truth for this iteration. To change it, follow the change process in section 8.
@@ -189,7 +189,7 @@ Recorded here because the change process requires it. None of these touch `mem.p
 | Scanned-page threshold lowered 50 → 20 characters per page | A short but text-based PDF was being sent to OCR and its text replaced by OCR output | `test_parsers_registry.py` case "pdf 引擎来自登记表" |
 | PDF page rendering for OCR falls back to `pdftoppm` / `mutool` | OCR of scanned PDFs required PyMuPDF specifically | `_pdf_to_images()` |
 | MIT `LICENSE` added | Repository publication | `LICENSE`, copyright Yu Liang |
-| Fallback memory root removed | Requirement: memory is written **only** inside a course folder. The CLI used to fall back to `%LOCALAPPDATA%\StudyPack\记忆`, which silently collected data outside any course | `paths.py` (`try_resolve_root` / `resolve_root` / `require_root`); CLI now exits 2 with the reason, `probe.py` still runs anywhere |
+| Fallback memory root removed | Requirement: memory is written **only** inside a course folder. The CLI used to fall back to `%LOCALAPPDATA%\StudyLoop\记忆`, which silently collected data outside any course | `paths.py` (`try_resolve_root` / `resolve_root` / `require_root`); CLI now exits 2 with the reason, `probe.py` still runs anywhere |
 | Artifact templates and validator made bilingual | A Chinese-only artifact contract made the pack useless to non-Chinese users | `templates/en/`, `ALIASES` in `artifacts.py`, bilingual answer labels (`答案:` / `Answer:`, `评分点:` / `Scoring:`), `new --lang`, workspace `lang` field |
 | README rewritten as a bilingual document | Chinese readers and international readers should each get a complete document | `README.md` (Chinese half + English half) |
 

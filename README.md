@@ -1,8 +1,10 @@
-# StudyPack · 学习插件套件 / Personalized Learning Plugin for AI Agents
+# StudyLoop · 学习闭环
 
 **中文** ｜ [English](#english)
 
-给 AI agent 用的学习插件，在对话里跑，管四件事：**记**（记忆）、**判**（掌握度）、**查**（查教材）、**推**（下一步学什么）。此外还能按模板生成试卷、教案、讲义、课程规划。
+给 AI agent 用的学习插件：**记住你**（记忆）、**判你过没过**（掌握度）、**答之前先查教材**（检索并标来源）、**该复习时提醒你**（遗忘曲线排期），还能按模板出**试卷 / 教案 / 讲义 / 课程规划**。
+
+名字就是它的工作方式：查 → 答 → 判 → 复习 → 出题，是一个闭环，不是四个互不相干的工具。
 
 没有界面，不捆运行时，必需依赖只有 Python 3.11+。
 
@@ -204,7 +206,7 @@ set MEMORY_ROOT=D:\somewhere\记忆
 ## 目录结构
 
 ```
-StudyPack\
+studyloop\
 ├─ README.md              本文件
 ├─ TECH.md                架构与版本（开发者向）
 ├─ AGENTS.md              给接手这个包的 agent 的迁移/维护手册
@@ -289,7 +291,9 @@ StudyPack\
 
 # English
 
-A learning plugin for AI agents. It runs inside the chat: **remember** (memory), **grade** (mastery), **retrieve** (course materials), and **advance** (what to learn next). It can also generate exams, lesson plans, handouts and curriculum plans from templates.
+**StudyLoop** — the name is the design: search → answer → grade → review → generate, one loop instead of four disconnected tools.
+
+A learning plugin for AI agents. It runs inside the chat: **remember** (memory), **grade** (mastery), **retrieve** before answering and cite the source, and **advance** (review scheduling plus what to learn next). It also generates exams, lesson plans, handouts and curriculum plans from templates.
 
 No UI. No bundled runtime. The only requirement is Python 3.11+.
 
@@ -491,7 +495,7 @@ set MEMORY_ROOT=D:\somewhere\记忆
 ## Directory structure
 
 ```
-StudyPack\
+studyloop\
 ├─ README.md              this file
 ├─ TECH.md                architecture and versioning
 ├─ AGENTS.md              migration / maintenance guide for agents

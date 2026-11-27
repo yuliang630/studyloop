@@ -39,11 +39,11 @@ Without OpenCode: use `adapters\claude-code\hooks.json` (merge into `settings.js
 
 ### Case A: program only (fresh start)
 
-Copy the whole `StudyPack\` directory, then run the three steps above.
+Copy the whole `studyloop\` directory, then run the three steps above.
 
 ### Case B: include learning records
 
-1. Copy `StudyPack\`
+1. Copy `studyloop\`
 2. Copy each course folder (**must include `记忆\` and `.study-workspace`**)
 3. Run the three steps on the new machine
 4. Open the course folder with the agent, then run `python core\scripts\probe.py` and confirm `source` shows `workspace:.study-workspace`

@@ -1,9 +1,9 @@
-# StudyPack · v1 Task Plan (historical record)
+# StudyLoop · v1 Task Plan (historical record)
 
 > Version v1.0 · 2026-11-27
 > **Execution rule: work through this file top to bottom. Mark each item ✅ and record the acceptance result. If acceptance fails, do not start the next item.**
 
-> **Note for readers of this repository:** this file is the v1 development log, kept for traceability. It is not a description of the current version. Some names mentioned here (`new_course.py`, `说明.md`, `D:\学习\...`) no longer exist — they were removed in v2.0 when the plugin stopped creating course folders. For the current state see `README.md`, `TECH.md` and `ROADMAP-v2.md`.
+> **Note for readers of this repository:** this file is the v1 development log, kept for traceability. It is not a description of the current version. Some names mentioned here (`new_course.py`, `说明.md`, `D:\学习\...`) no longer exist — they were removed in v2.0. The pack itself was renamed `StudyPack` → `StudyLoop` in 2.0.1; names below keep the original spelling, deliberately. For the current state see `README.md`, `TECH.md` and `ROADMAP-v2.md`.
 
 ---
 

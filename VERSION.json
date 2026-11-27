@@ -1,6 +1,6 @@
 {
-  "name": "StudyPack",
-  "display_name": "StudyPack · Personalized Learning Plugin for AI Agents",
+  "name": "StudyLoop",
+  "display_name": "StudyLoop · 学习闭环 / Personalized Learning Plugin for AI Agents",
   "version": "2.0.1",
   "released": "2026-11-27",
   "kind": "agent-extension-pack",

@@ -1,4 +1,4 @@
-# StudyPack · Technical Reference
+# StudyLoop · Technical Reference
 
 > Version 2.0.1 · 2026-11-27
 > Audience: developers and agents who will maintain or iterate on this pack. Read this to understand **what it is, how it is organized, how it runs, and where to change things**.
@@ -127,7 +127,7 @@ MEMORY_ROOT (environment)  >  <cwd>/记忆 when .study-workspace exists  >  conf
 none of the above → exit code 2 with the reason; nothing is written anywhere
 ```
 
-Ordinary directories are never written to. There is **no fallback root** — the earlier `%LOCALAPPDATA%\StudyPack\记忆` fallback was removed in 2.0.1, because a learning plugin that quietly collects data in an arbitrary directory is a liability. `probe.py` is the one exception: it can run anywhere and simply reports "not located".
+Ordinary directories are never written to. There is **no fallback root** — the earlier `%LOCALAPPDATA%` fallback root was removed in 2.0.1, because a learning plugin that quietly collects data in an arbitrary directory is a liability. `probe.py` is the one exception: it can run anywhere and simply reports "not located".
 
 ---
 
