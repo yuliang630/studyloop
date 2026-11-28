@@ -2,7 +2,7 @@
 
 > This was the pre-release development plan. Everything described here shipped in the first public release, **0.1.0**.
 
-> Started: 2026-11-27 · Owner: the main agent · Status: **complete; shipped in 0.1.0 with 272 regression assertions green**
+> Started: 2026-11-27 · Owner: the main agent · Status: **complete; the suite currently ships with 41 cases across 10 files, all green**
 > This file is the single source of truth for this iteration. To change it, follow the change process in section 8.
 
 ---
@@ -59,7 +59,7 @@ M1 artifacts skeleton ──► M2 input assembly ──► M3 validation ──
 | M2 | `brief.py`: assemble the input brief | 1 day | ✅ 13/13: template requirements, material excerpts, learner state, errors, progress, due reviews; runs for all four kinds |
 | M3 | `check`: required sections + coverage matrix + citations + score points | 1 day | ✅ 8/8: positive case passes; missing section, insufficient coverage, missing answer, missing score point, empty citation, unfilled template and a section without a source are all rejected |
 | M4 | Write-back: questions into the bank index; artifacts linked to the path | 0.5 day | ✅ 11/11: three bank rows with complete fields, re-runs add nothing, `link` writes `path.json`, `list` shows the linkage |
-| M5 | Documentation and release metadata, full regression | 0.5 day | ✅ final suite green (272 assertions); README/TECH/VERSION updated; SKILL gained the five-step generation flow and trigger words |
+| M5 | Documentation and release metadata, full regression | 0.5 day | ✅ full suite green (41 cases / 10 files, see `TECH.md` §9); README/TECH/VERSION updated; SKILL gained the five-step generation flow and trigger words |
 
 **4 days total.** No milestone starts until the previous one passes.
 
@@ -190,7 +190,7 @@ Recorded here because the change process requires it. None of these touch `mem.p
 | `references/` installed together with the skill | `SKILL.md` linked `references/layout.md`, which was never copied to the agent config directory — a dangling link | `install_adapters.py`; installed tree now has both files |
 | `config.json` no longer stores `pack_root` / `scripts_dir` | Both were written at install time and **never read by any script**; each script locates the pack from `__file__`. The pack is relocatable, so recording a machine path was pure noise and leaked a local path into the repository | `setup_config.py`; config now `{v, default_workspace?}`; copying the pack to another directory and running it still works |
 | Parsing layer rebuilt as an engine registry | The old code hardcoded a fixed chain (pymupdf → pdfplumber → pdftotext …). Requirement: use whatever the machine has, do not mandate specific tools | `parsers.py`: about 20 engines registered with probe + reader, built-in html / ipynb / epub, text sniffing, pandoc / LibreOffice as generic fallback; adding an engine is one entry |
-| Scanned-page threshold lowered 50 → 20 characters per page | A short but text-based PDF was being sent to OCR and its text replaced by OCR output | `test_parsers_registry.py` case "pdf 引擎来自登记表" |
+| Scanned-page threshold lowered 50 → 20 characters per page | A short but text-based PDF was being sent to OCR and its text replaced by OCR output | parsing-layer regression case (see `TECH.md` §9) |
 | PDF page rendering for OCR falls back to `pdftoppm` / `mutool` | OCR of scanned PDFs required PyMuPDF specifically | `_pdf_to_images()` |
 | MIT `LICENSE` added | Repository publication | `LICENSE`, copyright Yu Liang |
 | Fallback memory root removed | Requirement: memory is written **only** inside a course folder. The CLI used to fall back to `%LOCALAPPDATA%\Recalloop\记忆`, which silently collected data outside any course | `paths.py` (`try_resolve_root` / `resolve_root` / `require_root`); CLI now exits 2 with the reason, `probe.py` still runs anywhere |
@@ -205,4 +205,4 @@ That was still a whitelist — three host names in code. The installer now takes
 
 The last pre-release iteration moved automatic memory to runtime decisions, not install-time ones. `mem.py boot` reports which of four channels is active (host hook / MCP / CLI / files only) and what the agent must do at the end of the turn; `mem.py note` gives hook-less hosts a recording path that is honest about provenance (`source: agent-note`, `turn_key` de-duplication); `mem.py audit` reconciles answers against L1 and names days with no record; `install_adapters.py --rules-file` writes the session contract into any host's instruction file as a removable block; `mcp_server.py` exposes the same five capabilities over stdio JSON-RPC with no third-party dependency, and the hook writes `state/hook.json` so boot can tell whether it is actually running.
 
-Tests added along the way: `test_parsers_registry.py` (18), `test_e2e_formats.py` (4), `test_bilingual_artifacts.py` (13), `test_path_guard.py` (8), `test_install_paths.py` (22), `test_boot_note.py` (23), `test_rules_block.py` (17), `test_mcp.py` (15). Total 272, all green at 0.1.0.
+Tests added along the way (historical plan; the current suite is 41 cases across 10 files — see `TECH.md` §9): parsing registry, end-to-end formats, bilingual artifacts, path guards, installer paths, boot/note, rules block, MCP.

@@ -8,7 +8,7 @@
 
 没有界面，不捆运行时，必需依赖只有 Python 3.11+。
 
-当前版本 **0.1.0**（首个公开测试版），MIT 许可。
+当前版本 **0.2.0**（公开测试版），MIT 许可。
 
 ---
 
@@ -18,7 +18,7 @@
 
 这个插件把四件事接到对话循环上：
 
-1. **记忆**——每轮自动写进课程目录，下一轮自动注入画像，换会话也记得
+1. **记忆**——每轮自动写进课程目录；`digest` 之后（或显式 `mem.py profile --build`）重建画像，下一轮自动注入，换会话也记得
 2. **判定**——用贝叶斯知识追踪（BKT）算"已掌握概率"，门槛 0.95；概念和设计类必须自己讲清楚才算过；用了提示的那次作答不计入证据
 3. **检索**——回答教材问题前先查原文并标来源，查不到就直说
 4. **推进**——按知识点路径给"下一课"，按遗忘曲线（半衰期）排复习
@@ -161,6 +161,8 @@ python core\scripts\mem.py audit --days 7
 ```
 
 它会指出“有作答但没有对话记录”的日期，并给出补法。
+
+**注入什么、不注入什么**：注入块只包含学习者画像（`profile.md`）、近期动态（`recent.md`）与学习进度。L2 事实**不自动注入**——它是长周期结论库，需要时用 `mem.py fact-list` 或检索取用，避免挤占每轮预算。
 
 ---
 
@@ -383,7 +385,7 @@ A learning plugin for AI agents. It runs inside the chat: **remember** (memory),
 
 No UI. No bundled runtime. The only requirement is Python 3.11+.
 
-Version **0.1.0** (first public beta), MIT licence.
+Version **0.2.0** (public beta), MIT licence.
 
 ---
 
@@ -393,7 +395,7 @@ An ordinary AI conversation forgets everything between turns. Say "that topic fr
 
 This plugin wires four things into the conversation loop:
 
-1. **Memory** — every turn is written to the course folder automatically; the learner profile is injected into the next turn. It survives across sessions.
+1. **Memory** — every turn is written to the course folder automatically; the learner profile is rebuilt by `mem.py profile --build` (after `digest` or on demand) and injected into the next turn. It survives across sessions.
 2. **Mastery** — Bayesian Knowledge Tracing estimates "probability of mastery", with a 0.95 gate. Concept and design knowledge points require a qualitative pass. Answers produced with hints do not count as evidence.
 3. **Retrieval** — before answering a question about the materials, the agent searches the source and cites it. If nothing matches, it says so.
 4. **Progression** — the knowledge-point path answers "what is next", and a forgetting-curve scheduler decides when to review.

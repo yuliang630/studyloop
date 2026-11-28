@@ -1,9 +1,9 @@
 {
   "name": "Recalloop",
   "display_name": "Recalloop · 忆环 / Personalized Learning Plugin for AI Agents",
-  "version": "0.1.0",
-  "released": "2026-11-27",
-  "stage": "beta (first public release)",
+  "version": "0.2.0",
+  "released": "2026-11-28",
+  "stage": "beta",
   "kind": "agent-extension-pack",
   "summary": "A learning plugin for AI agents: memory, mastery grading, material retrieval, review scheduling, artifact scaffolding.",
   "platform": [
@@ -33,6 +33,7 @@
     "core/scripts": [
       "paths.py",
       "mem.py",
+      "profile_spec.py",
       "mastery.py",
       "practice.py",
       "srs.py",
@@ -107,7 +108,8 @@
     }
   },
   "capabilities": {
-    "memory": "Writes L1 and injects the profile; works with or without host hooks — `boot` reports the active channel (hook / MCP / CLI / files) and `note` covers hook-less hosts",
+    "memory": "Writes L1 and injects the learner profile; the profile is rebuilt by `mem.py profile --build` (after `digest` or on demand); works with or without host hooks — `boot` reports the active channel (hook / MCP / CLI / files) and `note` covers hook-less hosts",
+    "profile": "Four-section learner profile (goals, mastery, weak spots, rhythm) built from local data only; `profile --check` returns four verdicts (missing / skeleton / invalid / ok). Content is statistical, not semantic",
     "mastery": "BKT posterior probability with a 0.95 gate; concept/design knowledge points need a qualitative pass; hints are not counted as evidence",
     "retrieval": "BM25 keyword search with CJK bigrams",
     "review": "Forgetting-curve half-life scheduling",
@@ -129,6 +131,7 @@
     "Windows only",
     "No UI, no multi-user",
     "No semantic search",
+    "Profile content is statistical, not semantic",
     "Writes memory only inside a course folder",
     "Artifact bodies are produced by the agent; the plugin provides structure, input and validation only"
   ],

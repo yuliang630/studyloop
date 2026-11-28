@@ -69,7 +69,7 @@ Copy the whole `recalloop\` directory, then run the three steps above.
 1. **Never hand-edit files under `记忆\data\`**; delete through `mem.py forget` (it archives first).
 2. **Never write memory outside a course**: only directories containing `.study-workspace` count. There is no fallback root — the CLI exits 2 with the reason, and `probe.py` reports "not located". Options are explicit: `MEMORY_ROOT`, or `setup_config.py --workspace`.
 3. **Never overwrite the user's existing `AGENTS.md`**: append learning rules, do not replace. The plugin does not create courses or course directories.
-4. **Never change grading rules without running the tests**: `test_mastery.py` is the only guard against grading drift.
+4. **Never change grading rules without running the tests**: `tests/` is the guard against grading drift (`python -m unittest discover -s tests -p "test_*.py"`).
 5. **Never make a third-party library required by `retrieve.py`**: optional engines only, with graceful degradation. The pack's lifeline is "Python and nothing else".
 6. **Never touch the user's course content** (materials, notes, experiments) unless explicitly asked.
 

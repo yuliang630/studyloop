@@ -1,6 +1,6 @@
 # Recalloop · Technical Reference
 
-> Version 0.1.0 (beta) · 2026-11-27
+> Version 0.2.0 (beta) · 2026-11-28
 > Audience: developers and agents who will maintain or iterate on this pack. Read this to understand **what it is, how it is organized, how it runs, and where to change things**.
 
 ---
@@ -72,10 +72,10 @@ Two sources share the file: hook/CLI ingest (`source` absent, full `msg_ids`) an
 ```
 - 2026-11-27 · fact text <!-- ev: trn_aaa,trn_bbb -->
 ```
-`mem.py verify` checks that every `ev` exists in L1.
+`mem.py verify` checks that every `ev` exists in L1. **L2 facts are not injected** into the turn; query them on demand with `mem.py fact-list` or by retrieval.
 
 ### L3 · profile
-`profile.md` (≤1000 characters, injected every turn), `recent.md` (last week).
+`profile.md` (≤1000 characters) and `recent.md` (≤215 characters, last 7 days). Both are rebuilt by `mem.py profile --build` — after `digest` or on demand — and injected every turn. The whole block has a 1500-character budget: 1000 (profile) + 215 (recent) + 200 (progress) + 85 (template overhead).
 
 ### state · runtime state
 | File | Content |
@@ -179,7 +179,7 @@ Ordinary directories are never written to. There is **no fallback root** — the
 
 ### Change grading rules
 - Only change `mastery.py`
-- Run `test_mastery.py` afterwards (BKT formula self-check plus gate behaviour)
+- Run the suite afterwards: `python -m unittest discover -s tests -p "test_*.py"` (BKT formula self-check plus gate behaviour)
 - Never scatter grading rules into `practice.py`
 
 ### Change retrieval
@@ -189,7 +189,7 @@ Ordinary directories are never written to. There is **no fallback root** — the
 ### Add a parsing engine
 - One entry in `ENGINES` (`parsers.py`): a `probe` callable and a `read` callable returning `(text, engine_label)`
 - Attach it to the extension's chain in `CHAINS`, in preference order
-- Run `test_parsers_registry.py`; it checks registry integrity (every chained name is registered, every entry has both callables)
+- Run the suite: `python -m unittest discover -s tests -p "test_*.py"`; add a registry case when you register a new engine
 - Never make an engine required: `probe` returning false must leave the rest of the pipeline working
 
 ### Change directory conventions
@@ -200,30 +200,24 @@ Ordinary directories are never written to. There is **no fallback root** — the
 
 ## 9. Tests
 
-| Test | Coverage |
-|---|---|
-| `test_mastery.py` | BKT formula and gates (19) |
-| `test_practice.py` | practice loop (16) |
-| `test_mem_ingest.py` | ingest / inject (11) |
-| `test_p7_srs_path.py` | review and path (12) |
-| `test_p2_retrieve.py` | retrieval (8) |
-| `test_parsers.py` | md / docx / pdf / OCR through retrieve (9) |
-| `test_parsers_registry.py` | engine registry integrity, html / ipynb / epub / sniffing (18) |
-| `test_e2e_formats.py` | html / ipynb / epub indexed and retrieved end to end (4) |
-| `test_m1_artifacts.py` | scaffold new/list (17) |
-| `test_m2_brief.py` | input assembly (13) |
-| `test_m3_check.py` | validator, positive and seven negatives (8) |
-| `test_m4_writeback.py` | bank / link (11) |
-| `test_bilingual_artifacts.py` | zh/en templates, validation and bank extraction in both languages (13) |
-| `test_path_guard.py` | no writes outside a course; explicit MEMORY_ROOT; probe anywhere (8) |
-| `test_install_paths.py` | installer is path-driven: arbitrary directory names, discovery with 0/1/many candidates, foreign-file refusal, forced backup, dry-run (22) |
-| `test_boot_note.py` | boot injection + channel status, note with de-duplication, audit gaps (23) |
-| `test_rules_block.py` | contract block: create, append, idempotent update, remove, no parent creation (17) |
-| `test_mcp.py` | MCP handshake, tool list, forwarded calls, resources, error paths (15) |
-| `test_workspace.mjs` | course binding (5) |
-| `test_no_workspace.mjs` | no writes outside a course (3) |
+`python -m unittest discover -s tests -p "test_*.py"` — **41 cases across 10 files**, all green.
 
-**272 assertions. Run the full suite before releasing.**
+| Test file | Coverage |
+|---|---|
+| `tests/test_baseline.py` | CP1 baseline: the D-1 assertions (now green), sample structure, `init` tree |
+| `tests/profile/spec/test_schema_pin.py` | A18: schema sha256 and budget constants pinned to literals |
+| `tests/profile/spec/test_template.py` | A19: template constants vs the frozen spec, render wiring |
+| `tests/profile/spec/test_trim.py` | A4 / A4b / A5 / A5b / A6: paragraph-level trimming and block truncation |
+| `tests/profile/spec/test_roundtrip.py` | build → check in three data states; template/regex drift guard |
+| `tests/profile/check/test_probe.py` | A20: probe isolation (no `import mem`, AST-checked), init skeleton, scope |
+| `tests/profile/check/test_samples.py` | A10–A13: four sample verdicts |
+| `tests/profile/mcp/test_mcp.py` | A7 / A8 / A9: MCP profile resource and scope resolution |
+| `tests/adapter/test_adapter.py` | A23: adapter cache paths follow `RECALLOOP_SCOPE` (static check) |
+| `tests/profile/l2/test_docs.py` | A24: L2 facts are not injected; docs match code |
+
+Fixtures live in `tests/fixtures/`, samples in `tests/samples/`, baseline hashes in `tests/HASHES.txt`.
+
+**Run the full suite before releasing.**
 
 ---
 
@@ -234,6 +228,7 @@ Ordinary directories are never written to. There is **no fallback root** — the
 | Version | Date | Content |
 |---|---|---|
 | **0.1.0** (beta) | 2026-11-27 | First public release: three-layer memory, BKT mastery, BM25 retrieval, forgetting-curve review, knowledge-point path, artifact scaffolding (bilingual templates + validator), path-based host-neutral installer, four memory channels (hook / MCP / CLI / files only), bilingual README, MIT licence |
+| **0.2.0** (beta) | 2026-11-28 | L3 profile layer completed: `mem.py profile --build` generates a four-section profile and a recent-activity digest from L1 / L2 / state; `profile --check` validates structure and returns four verdicts; scope resolution unified in `paths.resolve_scope` (`config.json`'s `scope` field retired); a 41-case suite added under `tests/`; profile claims and test inventory aligned across README / TECH / ROADMAP |
 
 ### What was built that day (internal notes, no version numbers)
 
