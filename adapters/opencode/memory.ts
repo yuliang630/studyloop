@@ -137,9 +137,10 @@ function refreshCacheIfStale(root: string): void {
   const cache = `${root}/data/state/inject-cache.md`
   try {
     let newest = 0
+    const scope = process.env.RECALLOOP_SCOPE || "default"
     for (const p of [
-      `${root}/data/L3/default/profile.md`,
-      `${root}/data/L3/default/recent.md`,
+      `${root}/data/L3/${scope}/profile.md`,
+      `${root}/data/L3/${scope}/recent.md`,
       `${root}/data/state/path.json`,
       `${root}/data/state/reviews.json`,
     ]) {

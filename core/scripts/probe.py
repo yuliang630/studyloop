@@ -21,6 +21,7 @@ if hasattr(sys.stdout, "reconfigure"):
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SCRIPT_DIR)
 import paths as _paths
+import profile_spec as _spec  # 同目录、无副作用：probe 可 import，mem 不能
 
 ROOT = _paths.try_resolve_root()          # probe 可以在任何目录跑：定位不到只报告，不报错
 ROOT_SOURCE = _paths.describe_source()
@@ -67,11 +68,30 @@ def count_l2() -> int:
 
 
 def l3_ready() -> dict:
+    """画像状态：用 profile_spec.validate，与 mem.py 共用同一份判定。
+
+    probe 不能 import mem（mem 在模块级调用 require_root()，非课程目录会 SystemExit），
+    所以三个 token 的判定必须落在 profile_spec。
+    """
     if not DATA:
-        return {"profile": False, "recent": False}
-    base = os.path.join(DATA, "L3", "default")
+        return {"profile": "未定位", "detail": "当前目录不是课程工作区",
+                "recent": False, "scope": ""}
+    scope = _paths.resolve_scope()
+    base = os.path.join(DATA, "L3", scope)
+    path = os.path.join(base, "profile.md")
+    text = None
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8-sig") as f:
+                text = f.read()
+        except Exception as exc:
+            return {"profile": "读取失败", "detail": str(exc)[:60],
+                    "recent": False, "scope": scope}
+    key, detail = _spec.validate(text)
     return {
-        "profile": os.path.exists(os.path.join(base, "profile.md")),
+        "profile": key,
+        "detail": detail,
+        "scope": scope,
         "recent": os.path.exists(os.path.join(base, "recent.md")),
     }
 
@@ -128,7 +148,7 @@ def main() -> int:
     print(f"Python      {report['python']}  ({report['os']})")
     print(f"L1          {d['l1_files']} 个文件 / {d['l1_records']} 条记录")
     print(f"L2          {d['l2_facts']} 条事实")
-    print(f"L3          profile={'有' if d['l3']['profile'] else '无'}  recent={'有' if d['l3']['recent'] else '无'}")
+    print(f"L3          profile={d['l3']['profile']}（{d['l3']['detail']}）  scope={d['l3']['scope']}  recent={'有' if d['l3']['recent'] else '无'}")
     print()
     print("== 候选技能目录（不预设宿主，实测存在才列）==")
     if skills_dirs:

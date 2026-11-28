@@ -79,6 +79,16 @@ HINT = ("当前目录不是课程工作区（缺 .study-workspace），也没有
         "          python core\\scripts\\setup_config.py --workspace <课程根目录>")
 
 
+def resolve_scope(override: str | None = None) -> str:
+    """scope 解析的唯一规则：显式参数 > 环境变量 > default。
+
+    生产端（mem.py 的生成）与消费端（probe / MCP / 钩子）必须共用这一条，
+    否则会出现"写进 default、读 x"的半分裂。课程 config 的 scope 字段不再参与
+    解析，避免第四种来源。
+    """
+    return override or os.environ.get("RECALLOOP_SCOPE") or "default"
+
+
 def describe_source() -> str:
     if os.environ.get("MEMORY_ROOT"):
         return "env:MEMORY_ROOT"

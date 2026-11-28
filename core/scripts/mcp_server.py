@@ -169,17 +169,25 @@ def resource_read(uri: str) -> str:
     if uri.startswith("studyloop://"):
         uri = "recalloop://" + uri[len("studyloop://"):]
     if uri == "recalloop://profile":
+        sys.path.insert(0, SCRIPTS)
+        import paths as _paths  # noqa: PLC0415
         root = os.environ.get("MEMORY_ROOT")
         if not root:
-            sys.path.insert(0, SCRIPTS)
-            import paths as _paths  # noqa: PLC0415
             resolved = _paths.try_resolve_root()
             root = os.path.join(resolved, "") if resolved else ""
-        path = os.path.join(root, "data", "L3", "default", "profile.md") if root else ""
+        scope = _paths.resolve_scope()
+        scope_dir = os.path.join(root, "data", "L3", scope) if root else ""
+        path = os.path.join(scope_dir, "profile.md") if scope_dir else ""
         if path and os.path.exists(path):
             with open(path, "r", encoding="utf-8-sig") as f:
                 return f.read()
-        return "（还没有画像：先跑 mem.py init，再积累学习记录）"
+        mem_py = os.path.join(SCRIPTS, "mem.py")
+        if scope_dir and not os.path.isdir(scope_dir):
+            return ("（scope=%s 不存在：该 scope 下从未写入过记忆。"
+                    "若课程是新开的，先跑 `mem.py init`；否则确认 RECALLOOP_SCOPE 是否拼错。"
+                    "默认 scope 是 default）" % scope)
+        return ("（scope=%s 下还没有画像：运行 `python \"%s\" profile --build` 生成）"
+                % (scope, mem_py))
     if uri == "recalloop://due":
         return call("review.py", ["due"])[1]
     raise KeyError(uri)

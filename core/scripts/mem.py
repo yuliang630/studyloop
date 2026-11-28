@@ -25,6 +25,7 @@ import datetime as dt
 import json
 import os
 import re
+import shutil
 import sys
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -52,6 +53,7 @@ def _console_probe() -> None:
 _console_probe()
 
 import paths as _paths
+import profile_spec as _spec
 
 ROOT = _paths.require_root()
 DATA = os.path.join(ROOT, "data")
@@ -62,7 +64,7 @@ STATE_DIR = os.path.join(DATA, "state")
 CONFIG = os.path.join(ROOT, "config.json")
 
 DEFAULT_CONFIG = {
-    "scope": "default",
+    "scope_note": "已废弃：scope 由 RECALLOOP_SCOPE 或 --scope 决定，本字段不再参与解析",
     "limits": {"summary_chars": 800, "inject_chars": 1500, "seen_cap": 100},
 }
 
@@ -78,7 +80,18 @@ def load_config() -> dict:
 
 
 def scope_of(args) -> str:
-    return getattr(args, "scope", None) or load_config().get("scope", "default")
+    """scope 的唯一解析入口在 paths.resolve_scope，生产端与消费端共用。"""
+    return _paths.resolve_scope(getattr(args, "scope", None))
+
+
+def inject_chars(override=None) -> int:
+    """整块注入预算：显式 --chars 优先，否则读 limits.inject_chars（不再是无读取方的死配置）。"""
+    if override:
+        return int(override)
+    try:
+        return int(load_config().get("limits", {}).get("inject_chars", 1500) or 1500)
+    except Exception:
+        return 1500
 
 
 # ---------------------------------------------------------------- 目录
@@ -148,13 +161,25 @@ def days_ago(value: str) -> str:
 # ---------------------------------------------------------------- 命令
 
 
+def ensure_profile_skeleton(scope: str) -> bool:
+    """T3：init 时落空骨架，区分"不存在"与"存在但未填充"。已存在则不动。"""
+    target = os.path.join(L3_DIR, scope, "profile.md")
+    if os.path.exists(target):
+        return False
+    text = _spec.MARK + "\n\n" + "\n\n".join(p + "\n" for p in _spec.PARAS)
+    _atomic_write(target, text)
+    return True
+
+
 def cmd_init(args) -> int:
     scope = scope_of(args)
     ensure_tree(scope)
+    created = ensure_profile_skeleton(scope)
     print("记忆库已就绪：")
     for label, path in (("根目录", ROOT), ("L1", L1_DIR), ("L2", L2_DIR), ("L3", L3_DIR), ("状态", STATE_DIR)):
         print(f"  {label:<8} {path}")
     print(f"  当前 scope: {scope}")
+    print("  画像骨架：%s" % ("已创建（待填充）" if created else "已存在，未改动"))
     return 0
 
 
@@ -492,6 +517,240 @@ def build_progress_block(root: str) -> str:
     return "## 学习进度\n" + "\n".join(lines)
 
 
+# ---------------------------------------------------------------- L3 画像
+
+PROFILE_MARK = _spec.MARK
+PROFILE_LIMITS = {"profile": _spec.LIMITS["profile"], "recent": _spec.LIMITS["recent"]}
+NAME_MAX = _spec.NAME_MAX
+ID_MAX = _spec.ID_MAX
+PROFILE_COUNTS = _spec.COUNTS
+RECENT_MAX_ITEMS = _spec.RECENT_MAX_ITEMS
+RECENT_DAYS = _spec.RECENT_DAYS
+RHYTHM_DAYS = _spec.RHYTHM_DAYS
+
+
+def _clip(text, limit: int) -> str:
+    s = " ".join(str(text or "").split())
+    if len(s) <= limit:
+        return s
+    return s[: max(0, limit - 1)] + "…"
+
+
+def _atomic_write(path: str, text: str) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+        f.write(text)
+    os.replace(tmp, path)
+
+
+def _read_jsonl(path: str) -> list[dict]:
+    rows: list[dict] = []
+    if not os.path.exists(path):
+        return rows
+    try:
+        with open(path, "r", encoding="utf-8-sig", errors="replace") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except Exception:
+                    continue
+                if isinstance(rec, dict):
+                    rows.append(rec)
+    except Exception as exc:
+        print(f"[warn] 读取失败 {path}: {exc}", file=sys.stderr)
+    return rows
+
+
+def _load_json(path: str, default):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return default
+
+
+def _has_generated_mark(path: str) -> bool:
+    try:
+        with open(path, "r", encoding="utf-8-sig") as f:
+            return f.readline().strip() == PROFILE_MARK
+    except Exception:
+        return False
+
+
+def _attempt_index() -> dict[str, list[dict]]:
+    by_kp: dict[str, list[dict]] = {}
+    for row in _read_jsonl(os.path.join(STATE_DIR, "attempts.jsonl")):
+        kp = row.get("kp")
+        if not kp:
+            continue
+        by_kp.setdefault(str(kp), []).append(row)
+    for items in by_kp.values():
+        items.sort(key=lambda r: str(r.get("ts") or ""))
+    return by_kp
+
+
+def _mastery_rows(by_kp: dict[str, list[dict]]) -> list[dict]:
+    import mastery as _mastery  # 同目录，无副作用
+    out = []
+    for kp, items in by_kp.items():
+        evidence = [float(r.get("correct", 0)) for r in items
+                    if int(r.get("hints", 0) or 0) == 0]
+        kp_type = str(items[-1].get("type") or "memory")
+        m = _mastery.compute_mastery(evidence)
+        out.append({
+            "kp": kp,
+            "type": kp_type,
+            "mastery": round(m, 3),
+            "threshold": round(_mastery.gate_threshold(kp_type), 2),
+            "passed": bool(_mastery.is_mastered(kp_type, m)),
+        })
+    out.sort(key=lambda x: (x["passed"], x["mastery"], x["kp"]))
+    return out[:PROFILE_COUNTS["mastery"]]
+
+
+def _weak_rows(by_kp: dict[str, list[dict]]) -> list[dict]:
+    out = []
+    for kp, items in by_kp.items():
+        last = items[-1]
+        correct = float(last.get("correct", 0))
+        hints = int(last.get("hints", 0) or 0)
+        if correct < 1 or hints > 0:
+            out.append({"kp": kp, "correct": correct, "hints": hints,
+                        "ts": str(last.get("ts") or "")})
+    out.sort(key=lambda x: (x["ts"], x["kp"]), reverse=True)
+    return out[:PROFILE_COUNTS["weak"]]
+
+
+def _goal_rows() -> list[dict]:
+    data = _load_json(os.path.join(STATE_DIR, "path.json"), {})
+    items = data.get("items") or []
+    ordered = [x for x in items if not x.get("done")] + [x for x in items if x.get("done")]
+    return ordered[:PROFILE_COUNTS["goal"]]
+
+
+def _within(rec: dict, now: dt.datetime, days: int) -> bool:
+    ts = parse_iso(str(rec.get("ended_at") or rec.get("started_at") or ""))
+    if ts is None:
+        return False
+    if ts.tzinfo is None:
+        ts = ts.astimezone()
+    return (now - ts).days < days
+
+
+def _trim_profile(text: str, limit: int = PROFILE_LIMITS["profile"]) -> str:
+    """按段落优先级裁剪，实现统一在 profile_spec.trim。"""
+    return _spec.trim(text, limit)
+
+
+def build_profile_text(scope: str) -> str:
+    """按 PLAN-L3-schema 的四段结构生成 profile.md。"""
+    by_kp = _attempt_index()
+    lines = [PROFILE_MARK, "", "### 目标与进度"]
+    goals = _goal_rows()
+    if goals:
+        for x in goals:
+            lines.append(_spec.GOAL_LINE.format(
+                id=_clip(x.get("id", ""), ID_MAX),
+                title=_clip(x.get("title", ""), NAME_MAX),
+                status="已完成" if x.get("done") else "未完成"))
+    else:
+        lines.append(_spec.EMPTY_ITEMS[_spec.PARAS[0]])
+
+    lines += ["", "### 掌握度概览"]
+    mastery = _mastery_rows(by_kp)
+    if mastery:
+        for r in mastery:
+            lines.append(_spec.MASTERY_LINE.format(
+                kp=_clip(r["kp"], NAME_MAX), mastery=r["mastery"],
+                threshold=r["threshold"], status="达标" if r["passed"] else "未达标"))
+    else:
+        lines.append(_spec.EMPTY_ITEMS[_spec.PARAS[1]])
+
+    lines += ["", "### 薄弱环节"]
+    weak = _weak_rows(by_kp)
+    if weak:
+        for r in weak:
+            lines.append(_spec.WEAK_LINE.format(
+                kp=_clip(r["kp"], NAME_MAX), correct=r["correct"], hints=r["hints"]))
+    else:
+        lines.append(_spec.EMPTY_ITEMS[_spec.PARAS[2]])
+
+    now = dt.datetime.now().astimezone()
+    rows = read_l1(scope)
+    active = {parse_iso(str(r.get("ended_at") or r.get("started_at") or "")).date()
+              for r in rows
+              if _within(r, now, RHYTHM_DAYS)
+              and parse_iso(str(r.get("ended_at") or r.get("started_at") or "")) is not None}
+    count = len([r for r in rows if _within(r, now, RHYTHM_DAYS)])
+    lines += ["", "### 学习节奏",
+              _spec.RHYTHM_LINE.format(days=RHYTHM_DAYS, active=len(active), count=count), ""]
+    return _trim_profile("\n".join(lines))
+
+
+def build_recent_text(scope: str) -> str:
+    now = dt.datetime.now().astimezone()
+    rows = [r for r in read_l1(scope) if _within(r, now, RECENT_DAYS)]
+    rows = rows[-RECENT_MAX_ITEMS:]
+    lines = [PROFILE_MARK]
+    for r in rows:
+        ts = parse_iso(str(r.get("ended_at") or r.get("started_at") or ""))
+        day = ts.astimezone().strftime("%Y-%m-%d") if ts else "????-??-??"
+        lines.append("- %s %s" % (day, _clip(r.get("excerpt") or r.get("summary") or "", 60)))
+    if not rows:
+        lines.append("- 近期暂无记录。")
+    text = "\n".join(lines) + "\n"
+    while len(text) > PROFILE_LIMITS["recent"] and len(lines) > 2:
+        lines.pop(1)
+        text = "\n".join(lines) + "\n"
+    return text
+
+
+def cmd_profile(args) -> int:
+    """T1：生成画像与近期动态；T2：--check 严格校验。"""
+    scope = scope_of(args)
+    ensure_tree(scope)
+
+    if getattr(args, "check", False):
+        target = os.path.join(L3_DIR, scope, "profile.md")
+        text = None
+        if os.path.exists(target):
+            with open(target, "r", encoding="utf-8-sig") as f:
+                text = f.read()
+        key, detail = _spec.validate(text)
+        print(f"{_spec.TOKENS[key]} {detail}")
+        return _spec.EXIT_CODES[key]
+
+    if not getattr(args, "build", False):
+        print("[error] 需要 --build 或 --check", file=sys.stderr)
+        return 2
+
+    target = os.path.join(L3_DIR, scope, "profile.md")
+    if os.path.exists(target) and not _has_generated_mark(target):
+        if not getattr(args, "force", False):
+            print("[error] 已存在无生成标记的 profile.md，拒写；确认后加 --force",
+                  file=sys.stderr)
+            return 1
+        backup = target + ".bak-" + dt.datetime.now().strftime("%Y%m%d%H%M%S")
+        try:
+            shutil.copy2(target, backup)
+        except Exception as exc:
+            print(f"[error] 备份失败，已中止：{exc}", file=sys.stderr)
+            return 1
+        print(f"[ok] 已备份原文件至 {backup}")
+
+    profile = build_profile_text(scope)
+    recent = build_recent_text(scope)
+    _atomic_write(target, profile)
+    _atomic_write(os.path.join(L3_DIR, scope, "recent.md"), recent)
+    print(f"[ok] 画像已生成（{len(profile)} 字符）：{target}")
+    print(f"[ok] 近期动态已生成（{len(recent)} 字符）")
+    return 0
+
+
 def build_inject_block(scope: str, chars: int) -> str:
     """拼出可注入的记忆块（不含通道状态）。"""
     profile_path = os.path.join(L3_DIR, scope, "profile.md")
@@ -502,28 +761,18 @@ def build_inject_block(scope: str, chars: int) -> str:
         if os.path.exists(path):
             with open(path, "r", encoding="utf-8-sig") as f:
                 if target == "profile":
-                    profile = f.read()
+                    profile = _trim_profile(f.read())
                 else:
                     recent = f.read()
     progress = build_progress_block(ROOT)
     if not profile.strip() and not recent.strip() and not progress:
         return "（记忆库尚未建立）"
-    parts = ["【记忆库·自动注入】", "以下是当前 scope 的历史记忆，仅供保持连续性；与用户本轮要求冲突时，以本轮要求为准。"]
-    if profile.strip():
-        parts.append("## 画像\n" + profile.strip())
-    if recent.strip():
-        parts.append("## 近期动态\n" + recent.strip())
-    if progress:
-        parts.append(progress)
-    block = "\n\n".join(parts)
-    if len(block) > chars:
-        block = block[:chars] + "\n…[记忆已截断]"
-    return block
+    return _spec.render(profile, recent, progress, chars)
 
 
 def cmd_inject(args) -> int:
     """输出可被注入 system 的记忆块（stdout）。任何能调命令的 agent 都能用。"""
-    block = build_inject_block(scope_of(args), args.chars)
+    block = build_inject_block(scope_of(args), inject_chars(getattr(args, "chars", None)))
     if args.out:
         target = args.out
         os.makedirs(os.path.dirname(os.path.abspath(target)), exist_ok=True)
@@ -670,7 +919,7 @@ def _ingest(args) -> int:
     out_path = getattr(args, "refresh_out", None)
     if out_path:
         try:
-            cmd_inject(argparse.Namespace(scope=scope, chars=1500, out=out_path))
+            cmd_inject(argparse.Namespace(scope=scope, chars=None, out=out_path))
         except Exception as exc:
             print(f"[warn] 刷新注入缓存失败: {exc}", file=sys.stderr)
     return 0
@@ -709,7 +958,7 @@ def cmd_boot(args) -> int:
     """一条命令完成开课注入：记忆块 + 通道状态 + 本轮该做什么。"""
     scope = scope_of(args)
     ensure_tree(scope)
-    block = build_inject_block(scope, args.chars)
+    block = build_inject_block(scope, inject_chars(getattr(args, "chars", None)))
     status, action = channel_status(getattr(args, "transport", "") or "")
 
     if args.out:
@@ -778,7 +1027,7 @@ def cmd_note(args) -> int:
     out_path = getattr(args, "refresh_out", None)
     if out_path:
         try:
-            cmd_inject(argparse.Namespace(scope=scope, chars=1500, out=out_path))
+            cmd_inject(argparse.Namespace(scope=scope, chars=None, out=out_path))
         except Exception as exc:
             print(f"[warn] 刷新注入缓存失败: {exc}", file=sys.stderr)
     return 0
@@ -897,11 +1146,12 @@ def build_parser() -> argparse.ArgumentParser:
         ("boot", cmd_boot),
         ("note", cmd_note),
         ("audit", cmd_audit),
+        ("profile", cmd_profile),
     ):
         sp = sub.add_parser(name)
         sp.add_argument("--scope", default=None)
         if name == "boot":
-            sp.add_argument("--chars", type=int, default=1500)
+            sp.add_argument("--chars", type=int, default=None)
             sp.add_argument("--out", default=None, help="把注入缓存写到这里（agent 直接读文件）")
             sp.add_argument("--transport", default=None, help="mcp / 留空自动判断")
         if name == "note":
@@ -918,7 +1168,7 @@ def build_parser() -> argparse.ArgumentParser:
             sp.add_argument("--turn", default=None)
             sp.add_argument("--dry-run", action="store_true")
         if name == "inject":
-            sp.add_argument("--chars", type=int, default=1500)
+            sp.add_argument("--chars", type=int, default=None)
             sp.add_argument("--out", default=None)
         if name == "ingest":
             sp.add_argument("--from-stdin", action="store_true")
@@ -935,6 +1185,10 @@ def build_parser() -> argparse.ArgumentParser:
         if name == "fact-add":
             sp.add_argument("--text", required=True)
             sp.add_argument("--evidence", required=True)
+        if name == "profile":
+            sp.add_argument("--build", action="store_true", help="生成 profile.md 与 recent.md")
+            sp.add_argument("--check", action="store_true", help="严格校验画像结构（0/1/3）")
+            sp.add_argument("--force", action="store_true", help="覆盖无生成标记的既有文件（先备份）")
         sp.set_defaults(func=fn)
     return p
 
