@@ -1,6 +1,6 @@
 {
-  "name": "StudyLoop",
-  "display_name": "StudyLoop · 学习闭环 / Personalized Learning Plugin for AI Agents",
+  "name": "Recalloop",
+  "display_name": "Recalloop · 忆环 / Personalized Learning Plugin for AI Agents",
   "version": "0.1.0",
   "released": "2026-11-27",
   "stage": "beta (first public release)",
@@ -48,8 +48,8 @@
       "mcp_server.py"
     ],
     "core/skills": [
-      "study-loop/SKILL.md",
-      "study-loop/references/layout.md"
+      "recalloop/SKILL.md",
+      "recalloop/references/layout.md"
     ],
     "core/skills/templates": [
       "exam.md",

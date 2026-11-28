@@ -1,4 +1,4 @@
-# StudyLoop · Iteration Plan and Roadmap
+# Recalloop · Iteration Plan and Roadmap
 
 > This was the pre-release development plan. Everything described here shipped in the first public release, **0.1.0**.
 
@@ -32,7 +32,7 @@
 |---|---|---|---|
 | D1 | `core/scripts/artifacts.py` | CLI | `new` / `check` / `list` for four artifact kinds |
 | D2 | `core/scripts/brief.py` | CLI | Assembles the generation brief: material excerpts + mastery + errors + path position |
-| D3 | `core/skills/study-loop/templates/` | 4 Markdown skeletons | exam / lesson / handout / curriculum |
+| D3 | `core/skills/recalloop/templates/` | 4 Markdown skeletons | exam / lesson / handout / curriculum |
 | D4 | Write-back | Data contract | Exam questions → question-bank index; lesson/curriculum → linked to `path.json` |
 | D5 | Tests | Scripts | Template rendering, validator positives and negatives, brief assembly |
 | D6 | Documentation | Edits | README command table, TECH module table, VERSION.json |
@@ -193,15 +193,15 @@ Recorded here because the change process requires it. None of these touch `mem.p
 | Scanned-page threshold lowered 50 → 20 characters per page | A short but text-based PDF was being sent to OCR and its text replaced by OCR output | `test_parsers_registry.py` case "pdf 引擎来自登记表" |
 | PDF page rendering for OCR falls back to `pdftoppm` / `mutool` | OCR of scanned PDFs required PyMuPDF specifically | `_pdf_to_images()` |
 | MIT `LICENSE` added | Repository publication | `LICENSE`, copyright Yu Liang |
-| Fallback memory root removed | Requirement: memory is written **only** inside a course folder. The CLI used to fall back to `%LOCALAPPDATA%\StudyLoop\记忆`, which silently collected data outside any course | `paths.py` (`try_resolve_root` / `resolve_root` / `require_root`); CLI now exits 2 with the reason, `probe.py` still runs anywhere |
+| Fallback memory root removed | Requirement: memory is written **only** inside a course folder. The CLI used to fall back to `%LOCALAPPDATA%\Recalloop\记忆`, which silently collected data outside any course | `paths.py` (`try_resolve_root` / `resolve_root` / `require_root`); CLI now exits 2 with the reason, `probe.py` still runs anywhere |
 | Artifact templates and validator made bilingual | A Chinese-only artifact contract made the pack useless to non-Chinese users | `templates/en/`, `ALIASES` in `artifacts.py`, bilingual answer labels (`答案:` / `Answer:`, `评分点:` / `Scoring:`), `new --lang`, workspace `lang` field |
 | README rewritten as a bilingual document | Chinese readers and international readers should each get a complete document | `README.md` (Chinese half + English half) |
 
-Later the same day the pack and repository were renamed `StudyPack` → `StudyLoop` (`yuliang630/studyloop`). The old name described the container; the new one describes the mechanism — search, answer, grade, review, generate as a single loop. No behaviour change; local installs must re-run `setup_config.py` and `install_adapters.py` because the pack path moved.
+Later the same day the pack and repository were renamed `StudyPack` → `Recalloop` (`yuliang630/recalloop`). The old name described the container; the new one describes the mechanism — search, answer, grade, review, generate as a single loop. No behaviour change; local installs must re-run `setup_config.py` and `install_adapters.py` because the pack path moved.
 
 The next iteration made the installer host-neutral. It used to install into OpenCode whenever `~/.config/opencode` existed, which meant a WorkBuddy user's install also wrote into their OpenCode config — and it overwrote `memory.ts` unconditionally. `--target` named one host, auto-detection looked only at the running environment, an unknown host meant "print instructions, write nothing", files carried an ownership marker, foreign files were refused (exit 3), and `--force` backed up first.
 
-That was still a whitelist — three host names in code. The installer now takes **a directory, not a host name**: `--skills-dir <path>`, or `STUDYLOOP_SKILLS_DIR`, or the single `<dir>/skills` folder discovered on the machine. `--discover` lists the candidates that actually exist (eight on the author's machine, including agents this pack was never tested with); several candidates means it refuses to guess. `--plugin-dir` drops the hook file into any plugin-loading host, `--hook-json` prints a `settings.json` snippet, `--dry-run` shows the plan. Skills are the portable unit; hooks remain host-specific by nature.
+That was still a whitelist — three host names in code. The installer now takes **a directory, not a host name**: `--skills-dir <path>`, or `RECALLOOP_SKILLS_DIR`, or the single `<dir>/skills` folder discovered on the machine. `--discover` lists the candidates that actually exist (eight on the author's machine, including agents this pack was never tested with); several candidates means it refuses to guess. `--plugin-dir` drops the hook file into any plugin-loading host, `--hook-json` prints a `settings.json` snippet, `--dry-run` shows the plan. Skills are the portable unit; hooks remain host-specific by nature.
 
 The last pre-release iteration moved automatic memory to runtime decisions, not install-time ones. `mem.py boot` reports which of four channels is active (host hook / MCP / CLI / files only) and what the agent must do at the end of the turn; `mem.py note` gives hook-less hosts a recording path that is honest about provenance (`source: agent-note`, `turn_key` de-duplication); `mem.py audit` reconciles answers against L1 and names days with no record; `install_adapters.py --rules-file` writes the session contract into any host's instruction file as a removable block; `mcp_server.py` exposes the same five capabilities over stdio JSON-RPC with no third-party dependency, and the hook writes `state/hook.json` so boot can tell whether it is actually running.
 

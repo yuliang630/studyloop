@@ -1,4 +1,4 @@
-# StudyLoop · Technical Reference
+# Recalloop · Technical Reference
 
 > Version 0.1.0 (beta) · 2026-11-27
 > Audience: developers and agents who will maintain or iterate on this pack. Read this to understand **what it is, how it is organized, how it runs, and where to change things**.
@@ -45,11 +45,11 @@ L4 Data        <course>/记忆/data/{L1,L2,L3,state}
 | `retrieve.py` | retrieval | `index`/`sync`/`search`/`eval`/`stats`/`add`; BM25, CJK bigrams |
 | `parsers.py` | material parsing layer | engine registry (probe + reader per engine) + per-extension chains + generic fallback; skips unreadable files with reasons |
 | `artifacts.py` | artifact scaffolding | `new` / `list` / `layout` / `check` / `bank` / `link` |
-| `mcp_server.py` | MCP transport shell | stdio JSON-RPC 2.0; tools `boot`/`note`/`search`/`record`/`due`, resources `studyloop://profile`, `studyloop://due`; **no business logic, forwards to the scripts** |
+| `mcp_server.py` | MCP transport shell | stdio JSON-RPC 2.0; tools `boot`/`note`/`search`/`record`/`due`, resources `recalloop://profile`, `recalloop://due`; **no business logic, forwards to the scripts** |
 | `brief.py` | generation-input assembly | materials + mastery + errors + progress → `记录/brief-*.md` |
 | `probe.py` | self-check | environment, data volume, suggested route |
 | `setup_config.py` | write machine config | `config.json` |
-| `install_adapters.py` | deploy into a directory you name | `--skills-dir` / `STUDYLOOP_SKILLS_DIR` / single discovered candidate; `--plugin-dir` and `--hook-json` are optional; **no agent names in the code**; never creates the target directory, never overwrites a file without the `@studyloop-managed` marker (exit 3), `--force` backs up first |
+| `install_adapters.py` | deploy into a directory you name | `--skills-dir` / `RECALLOOP_SKILLS_DIR` / single discovered candidate; `--plugin-dir` and `--hook-json` are optional; **no agent names in the code**; never creates the target directory, never overwrites a file without the `@recalloop-managed` marker (exit 3), `--force` backs up first |
 
 ---
 
@@ -97,7 +97,7 @@ Two sources share the file: hook/CLI ingest (`source` absent, full `msg_ids`) an
 | curriculum | `记录/课程规划.md` |
 | question bank | `题库/index.jsonl` |
 
-All five can be overridden per workspace through the `layout` field in `.study-workspace` (see `core/skills/study-loop/references/layout.md`).
+All five can be overridden per workspace through the `layout` field in `.study-workspace` (see `core/skills/recalloop/references/layout.md`).
 
 **Templates are bilingual.** `templates/` holds the Chinese skeletons, `templates/en/` the English ones. `artifacts.py new` picks the language from `--lang`, then the workspace marker's `lang` field, then Chinese by default. The validator and the question-bank extractor accept **either** language: section names are matched against a canonical Chinese name plus an alias table (`ALIASES` in `artifacts.py`), and the answer labels accept `答案：` / `Answer:` and `评分点：` / `Scoring:`. A document may even mix them.
 

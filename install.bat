@@ -4,7 +4,7 @@ setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
 echo ============================================
-echo   StudyLoop installer
+echo   Recalloop installer
 echo ============================================
 echo.
 

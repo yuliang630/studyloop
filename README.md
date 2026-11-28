@@ -1,10 +1,10 @@
-# StudyLoop · 学习闭环
+# Recalloop · 忆环
 
 **中文** ｜ [English](#english)
 
 给 AI agent 用的学习插件：**记住你**（记忆）、**判你过没过**（掌握度）、**答之前先查教材**（检索并标来源）、**该复习时提醒你**（遗忘曲线排期），还能按模板出**试卷 / 教案 / 讲义 / 课程规划**。
 
-名字就是它的工作方式：查 → 答 → 判 → 复习 → 出题，是一个闭环，不是四个互不相干的工具。
+名字来自两件事：**recall**（把学过的调出来）+ **loop**（循环）。中文「忆环」是逐字对应：忆 = recall，环 = loop。查到判、判到练、练到复习、复习到出题，转一圈再回到下一个知识点。
 
 没有界面，不捆运行时，必需依赖只有 Python 3.11+。
 
@@ -95,10 +95,10 @@ python core\scripts\install_adapters.py --discover
 | 不认名字，只认目录 | 代码里没有 agent 白名单；路径给对就能装 |
 | 不给目录就不写 | 没有 `--skills-dir`、没有环境变量、候选也不唯一 → 只打印，退出 0 |
 | 不创建目录 | 目标目录不存在 → 报错退出 2，不替你造目录 |
-| 不覆盖别人的文件 | 没有 `@studyloop-managed` 标记 → 冲突，退出 3，原文件不动 |
+| 不覆盖别人的文件 | 没有 `@recalloop-managed` 标记 → 冲突，退出 3，原文件不动 |
 | 覆盖先备份 | `--force` 才写，先存 `<文件名>.bak-<时间戳>` |
 
-环境变量也能给目录（适合批量/脚本）：`STUDYLOOP_SKILLS_DIR`。
+环境变量也能给目录（适合批量/脚本）：`RECALLOOP_SKILLS_DIR`（老名字 `STUDYLOOP_SKILLS_DIR` 仍然认）。
 
 **从更早的预发布版本升级**：那些文件没有归属标记，第一次会被判为"别人的文件"并报冲突（退出码 3）。确认那些文件确实是本插件以前装的，加一次 `--force` 即可，旧文件会先备份成 `.bak-<时间戳>`。
 
@@ -128,7 +128,7 @@ python core\scripts\mem.py boot
 |---|---|---|
 | 钩子 工作中 | 宿主钩子在写 L1 | 什么都不用做 |
 | 未检测到钩子 / 未工作 | 没有钩子（或钩子没跑） | `mem.py note --text "<一句话总结>"` |
-| MCP | 本次调用来自 MCP 服务端 | 调工具 `studyloop_note` |
+| MCP | 本次调用来自 MCP 服务端 | 调工具 `recalloop_note` |
 
 四条通道，同一套动作：
 
@@ -142,8 +142,8 @@ python core\scripts\mem.py boot
 MCP 只配一次，任何支持 MCP 的宿主通用：
 
 ```json
-{"mcpServers": {"studyloop": {"command": "python",
-  "args": ["D:\\插件\\studyloop\\core\\scripts\\mcp_server.py"]}}}
+{"mcpServers": {"recalloop": {"command": "python",
+  "args": ["D:\\插件\\recalloop\\core\\scripts\\mcp_server.py"]}}}
 ```
 
 无钩子宿主还可以把契约写进宿主的指令文件：
@@ -152,7 +152,7 @@ MCP 只配一次，任何支持 MCP 的宿主通用：
 python core\scripts\install_adapters.py --rules-file "<宿主的 AGENTS.md / 规则文件>"
 ```
 
-它只写一段带 `<!-- studyloop:begin/end -->` 标记的块，追加不覆盖，`--remove-rules` 可撤销。
+它只写一段带 `<!-- recalloop:begin/end -->` 标记的块，追加不覆盖，`--remove-rules` 可撤销。
 
 **对账**（否则“自动记忆”只是自说自话）：
 
@@ -175,7 +175,7 @@ mkdir D:\courses\calculus
 
 然后把教材放进 `教材\`（或在标记里用 `sources` 指向别处），用 agent 打开这个文件夹即可。
 
-目录怎么组织、产物放哪、怎么覆盖成你已有的结构：见 `core\skills\study-loop\references\layout.md`，或者运行：
+目录怎么组织、产物放哪、怎么覆盖成你已有的结构：见 `core\skills\recalloop\references\layout.md`，或者运行：
 
 ```powershell
 python core\scripts\artifacts.py layout
@@ -285,7 +285,7 @@ set MEMORY_ROOT=D:\somewhere\记忆
 ## 目录结构
 
 ```
-studyloop\
+recalloop\
 ├─ README.md              本文件
 ├─ TECH.md                架构与版本（开发者向）
 ├─ AGENTS.md              给接手这个包的 agent 的迁移/维护手册
@@ -298,7 +298,7 @@ studyloop\
 ├─ config.json            可选本机偏好（不含本机路径）
 ├─ core\
 │   ├─ scripts\           14 个 Python 脚本
-│   └─ skills\study-loop\ SKILL.md · references\ · templates\（含 en\ 英文模板）
+│   └─ skills\recalloop\ SKILL.md · references\ · templates\（含 en\ 英文模板）
 └─ adapters\
     ├─ opencode\memory.ts
     ├─ claude-code\hooks.json
@@ -361,7 +361,7 @@ studyloop\
 能。内核是命令行工具，任何能跑命令的 agent 都能用；钩子只是自动化外壳。
 
 **会不会动我别的 agent 的配置？**
-不会。安装器里没有任何 agent 名单，它只往你用 `--skills-dir` 指定的目录写；没给目录、也没有唯一候选时只打印说明，一个字节都不写；目标文件不是本插件写的（没有 `@studyloop-managed` 标记）就不覆盖，只报冲突并退出 3。
+不会。安装器里没有任何 agent 名单，它只往你用 `--skills-dir` 指定的目录写；没给目录、也没有唯一候选时只打印说明，一个字节都不写；目标文件不是本插件写的（没有 `@recalloop-managed` 标记）就不覆盖，只报冲突并退出 3。
 
 ---
 
@@ -377,7 +377,7 @@ studyloop\
 
 # English
 
-**StudyLoop** — the name is the design: search → answer → grade → review → generate, one loop instead of four disconnected tools.
+**Recalloop** = recall + loop. The Chinese name 忆环 is the same two ideas: 忆 (recall) + 环 (loop). The name is the mechanism: search → answer → grade → review → generate, one loop instead of four disconnected tools.
 
 A learning plugin for AI agents. It runs inside the chat: **remember** (memory), **grade** (mastery), **retrieve** before answering and cite the source, and **advance** (review scheduling plus what to learn next). It also generates exams, lesson plans, handouts and curriculum plans from templates.
 
@@ -470,10 +470,10 @@ Five hard rules:
 | Paths, not names | No agent whitelist in the code; a correct path is all it needs |
 | No directory, no writes | No `--skills-dir`, no env var, no single candidate → print only, exit 0 |
 | Never creates a directory | Missing target directory → error, exit 2, nothing created |
-| Never overwrites a foreign file | Missing `@studyloop-managed` marker → conflict, exit 3, file untouched |
+| Never overwrites a foreign file | Missing `@recalloop-managed` marker → conflict, exit 3, file untouched |
 | Forced overwrite backs up | Only with `--force`, after saving `<name>.bak-<timestamp>` |
 
-The environment variable `STUDYLOOP_SKILLS_DIR` works too, for scripts and batch installs.
+The environment variable `RECALLOOP_SKILLS_DIR` works too, for scripts and batch installs (the older `STUDYLOOP_SKILLS_DIR` is still accepted).
 
 **Upgrading from an earlier pre-release build:** those files carry no ownership marker, so the first run reports a conflict (exit 3). Once you have confirmed those files really are the ones the plugin installed earlier, run once with `--force`; each old file is backed up as `.bak-<timestamp>` first.
 
@@ -503,7 +503,7 @@ python core\scripts\mem.py boot
 |---|---|---|
 | 钩子 工作中 | the host hook is writing L1 | nothing |
 | 未检测到钩子 / 未工作 | no hook (or it is not running) | `mem.py note --text "<one line>"` |
-| MCP | the call came through the MCP server | call the `studyloop_note` tool |
+| MCP | the call came through the MCP server | call the `recalloop_note` tool |
 
 Four channels, one protocol:
 
@@ -517,8 +517,8 @@ Four channels, one protocol:
 MCP is configured once and works on any host that speaks it:
 
 ```json
-{"mcpServers": {"studyloop": {"command": "python",
-  "args": ["D:\\插件\\studyloop\\core\\scripts\\mcp_server.py"]}}}
+{"mcpServers": {"recalloop": {"command": "python",
+  "args": ["D:\\插件\\recalloop\\core\\scripts\\mcp_server.py"]}}}
 ```
 
 For a hook-less host you can also write the contract into its instruction file:
@@ -527,7 +527,7 @@ For a hook-less host you can also write the contract into its instruction file:
 python core\scripts\install_adapters.py --rules-file "<the host's AGENTS.md / rules file>"
 ```
 
-It writes one block delimited by `<!-- studyloop:begin/end -->`, appends without touching existing content, and `--remove-rules` takes it out again.
+It writes one block delimited by `<!-- recalloop:begin/end -->`, appends without touching existing content, and `--remove-rules` takes it out again.
 
 **Reconcile**, otherwise "automatic memory" is self-congratulation:
 
@@ -550,7 +550,7 @@ mkdir D:\courses\calculus
 
 Then put materials into `教材\` (or point `sources` elsewhere in the marker) and open the folder with your agent.
 
-How directories and documents should be organised — and how to override the convention to match an existing project — is documented in `core\skills\study-loop\references\layout.md`, or run:
+How directories and documents should be organised — and how to override the convention to match an existing project — is documented in `core\skills\recalloop\references\layout.md`, or run:
 
 ```powershell
 python core\scripts\artifacts.py layout
@@ -660,7 +660,7 @@ set MEMORY_ROOT=D:\somewhere\记忆
 ## Directory structure
 
 ```
-studyloop\
+recalloop\
 ├─ README.md              this file
 ├─ TECH.md                architecture and versioning
 ├─ AGENTS.md              migration / maintenance guide for agents
@@ -673,7 +673,7 @@ studyloop\
 ├─ config.json            optional local preferences (no machine paths)
 ├─ core\
 │   ├─ scripts\           14 Python scripts
-│   └─ skills\study-loop\ SKILL.md · references\ · templates\ (with en\)
+│   └─ skills\recalloop\ SKILL.md · references\ · templates\ (with en\)
 └─ adapters\
     ├─ opencode\memory.ts
     ├─ claude-code\hooks.json
@@ -736,7 +736,7 @@ Run `probe.py` and look at the "material parsing capability" block. If every PDF
 Yes. The core is a command-line tool; any agent that can run commands can use it. Hooks are only the automation shell.
 
 **Will installing touch my other agents?**
-No. The installer contains no agent list at all; it writes only into the directory you pass with `--skills-dir`. With no directory and no single candidate it prints instructions and writes nothing. A target file that is not ours (no `@studyloop-managed` marker) is never overwritten — it reports a conflict and exits 3.
+No. The installer contains no agent list at all; it writes only into the directory you pass with `--skills-dir`. With no directory and no single candidate it prints instructions and writes nothing. A target file that is not ours (no `@recalloop-managed` marker) is never overwritten — it reports a conflict and exits 3.
 
 ---
 

@@ -1,4 +1,4 @@
-// @studyloop-managed
+// @recalloop-managed
 /**
  * memory —— 学习插件 · OpenCode 薄适配器
  *

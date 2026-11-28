@@ -19,9 +19,9 @@ import sys
 
 MARKER = ".study-workspace"
 
-SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))      # StudyLoop\core\scripts
-CORE_DIR = os.path.dirname(SCRIPTS_DIR)                        # StudyLoop\core
-PACK_ROOT = os.path.dirname(CORE_DIR)                          # StudyLoop
+SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))      # Recalloop\core\scripts
+CORE_DIR = os.path.dirname(SCRIPTS_DIR)                        # Recalloop\core
+PACK_ROOT = os.path.dirname(CORE_DIR)                          # Recalloop
 CONFIG_PATH = os.path.join(PACK_ROOT, "config.json")
 
 

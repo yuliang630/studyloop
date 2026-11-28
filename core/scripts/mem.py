@@ -688,7 +688,7 @@ def hook_heartbeat() -> dict:
 def channel_status(transport: str = "") -> tuple[str, str]:
     """返回 (通道说明, 本轮动作)。有钩子、有 MCP、都没有，各自该干什么。"""
     if transport == "mcp":
-        return "MCP（本次调用来自 MCP 服务端）", "开课已注入；本轮结束调 studyloop_note"
+        return "MCP（本次调用来自 MCP 服务端）", "开课已注入；本轮结束调 recalloop_note"
     hb = hook_heartbeat()
     ts = parse_iso(hb.get("last_ingest_at", ""))
     if ts:
@@ -746,7 +746,8 @@ def cmd_note(args) -> int:
         print("[error] --text 不能为空", file=sys.stderr)
         return 2
 
-    sid = args.sid or os.environ.get("STUDYLOOP_SID") or "agent"
+    sid = (args.sid or os.environ.get("RECALLOOP_SID")
+               or os.environ.get("STUDYLOOP_SID") or "agent")
     key = _turn_key(sid, text)
     if not args.force:
         for rec in read_l1(scope):

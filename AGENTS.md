@@ -28,9 +28,9 @@ python core\scripts\install_adapters.py --skills-dir <one of them> --rules-file 
 `install_adapters.py` rules — do not work around them:
 
 1. **There is no agent list in the code.** The destination is a directory, so any host works. Never add an enum of agent names back.
-2. No `--skills-dir`, no `STUDYLOOP_SKILLS_DIR`, and not exactly one discovered candidate → it prints instructions and writes nothing.
+2. No `--skills-dir`, no `RECALLOOP_SKILLS_DIR` (the older `STUDYLOOP_SKILLS_DIR` still works), and not exactly one discovered candidate → it prints instructions and writes nothing.
 3. It never creates a target directory; a missing path is an error (exit 2).
-4. It never overwrites a file it does not own: the target must contain `@studyloop-managed`, otherwise it reports a conflict and exits **3**. `--force` overwrites but saves `<name>.bak-<timestamp>` first.
+4. It never overwrites a file it does not own: the target must contain `@recalloop-managed`, otherwise it reports a conflict and exits **3**. `--force` overwrites but saves `<name>.bak-<timestamp>` first.
 5. Hooks are optional and host-specific: `--plugin-dir <dir>` drops the hook file, `--hook-json` prints a `settings.json` snippet to merge by hand. Skills alone work without any hook.
 
 **Restart the agent afterwards** (only if a hook was installed), otherwise hooks will not load.
@@ -45,11 +45,11 @@ Without OpenCode: use `adapters\claude-code\hooks.json` (merge into `settings.js
 
 ### Case A: program only (fresh start)
 
-Copy the whole `studyloop\` directory, then run the three steps above.
+Copy the whole `recalloop\` directory, then run the three steps above.
 
 ### Case B: include learning records
 
-1. Copy `studyloop\`
+1. Copy `recalloop\`
 2. Copy each course folder (**must include `记忆\` and `.study-workspace`**)
 3. Run the three steps on the new machine
 4. Open the course folder with the agent, then run `python core\scripts\probe.py` and confirm `source` shows `workspace:.study-workspace`

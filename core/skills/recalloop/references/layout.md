@@ -1,4 +1,4 @@
-<!-- @studyloop-managed -->
+<!-- @recalloop-managed -->
 
 # Workspace layout convention
 

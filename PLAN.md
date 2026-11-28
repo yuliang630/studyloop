@@ -1,9 +1,9 @@
-# StudyLoop · Early Task Plan (historical record)
+# Recalloop · Early Task Plan (historical record)
 
 > Written 2026-11-27 · never published as a version
 > **Execution rule: work through this file top to bottom. Mark each item ✅ and record the acceptance result. If acceptance fails, do not start the next item.**
 
-> **Note for readers of this repository:** this file is the early development log, kept for traceability. It is not a description of the current version. Some names mentioned here (`new_course.py`, `说明.md`, `D:\学习\...`) no longer exist — they were removed before the first public release. The pack itself was renamed `StudyPack` → `StudyLoop` in the same period; names below keep the original spelling, deliberately. For the current state see `README.md`, `TECH.md` and `ROADMAP.md`.
+> **Note for readers of this repository:** this file is the early development log, kept for traceability. It is not a description of the current version. Some names mentioned here (`new_course.py`, `说明.md`, `D:\学习\...`) no longer exist — they were removed before the first public release. The pack itself was renamed `StudyPack` → `Recalloop` in the same period; names below keep the original spelling, deliberately. For the current state see `README.md`, `TECH.md` and `ROADMAP.md`.
 
 ---
 
@@ -31,7 +31,7 @@ StudyPack\                      ← whole pack, copyable to a USB stick
 ├─ config.json                  ← written at install time with local paths
 ├─ core\
 │   ├─ scripts\                 mem / mastery / practice / retrieve / paths / new_course
-│   ├─ skills\study-loop\SKILL.md
+│   ├─ skills\recalloop\SKILL.md
 │   └─ data\                    (empty by default; only samples that must ship with the pack)
 └─ adapters\
     ├─ opencode\memory.ts

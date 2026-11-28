@@ -6,7 +6,7 @@
     1. 不枚举宿主。装到哪里由路径决定，不由"名字"决定——任何 agent 都能用。
     2. 不给路径就只探测候选目录并打印，不写任何东西。
     3. 只在已存在的目录里写，不替你创建别人的配置根。
-    4. 不认识的文件绝不覆盖：没有 @studyloop-managed 标记就报冲突（退出码 3）。
+    4. 不认识的文件绝不覆盖：没有 @recalloop-managed 标记就报冲突（退出码 3）。
     5. --force 才覆盖，且先备份成 <文件名>.bak-<时间戳>。
 
 用法：
@@ -16,7 +16,7 @@
     python core\\scripts\\install_adapters.py --skills-dir <目录> --hook-json
     python core\\scripts\\install_adapters.py --discover             # 列出候选目录
 
-目录来源（按顺序）：--skills-dir > 环境变量 STUDYLOOP_SKILLS_DIR > 自动探测（唯一候选才用）
+目录来源（按顺序）：--skills-dir > 环境变量 RECALLOOP_SKILLS_DIR（旧名 STUDYLOOP_SKILLS_DIR 仍认）> 自动探测（唯一候选才用）
 """
 
 from __future__ import annotations
@@ -34,13 +34,16 @@ SCRIPTS = os.path.dirname(os.path.abspath(__file__))
 PACK = os.path.dirname(os.path.dirname(SCRIPTS))
 HOME = os.path.expanduser("~")
 
-MARK_TS = "// @studyloop-managed"
-MARK_MD = "<!-- @studyloop-managed -->"
+MARK_TS = "// @recalloop-managed"
+MARK_MD = "<!-- @recalloop-managed -->"
 
-BLOCK_BEGIN = "<!-- studyloop:begin -->"
-BLOCK_END = "<!-- studyloop:end -->"
+BLOCK_BEGIN = "<!-- recalloop:begin -->"
+BLOCK_END = "<!-- recalloop:end -->"
 
-ENV_SKILLS = "STUDYLOOP_SKILLS_DIR"
+ENV_SKILLS = "RECALLOOP_SKILLS_DIR"
+ENV_SKILLS_LEGACY = "STUDYLOOP_SKILLS_DIR"
+LEGACY_SKILL_DIRS = ("study-loop",)
+LEGACY_MARKERS = {MARK_TS: "// @studyloop-managed", MARK_MD: "<!-- @studyloop-managed -->"}
 
 
 def rules_block() -> str:
@@ -51,7 +54,7 @@ def rules_block() -> str:
     art = os.path.join(PACK, "core", "scripts", "artifacts.py")
     return "\n".join([
         BLOCK_BEGIN,
-        "## StudyLoop 记忆契约",
+        "## Recalloop 记忆契约",
         "",
         f"1. 会话第一条消息前：`python \"{mem}\" boot`，把输出当上下文；它会说明本轮结束要不要手动记账。",
         f"2. 回答课程内容前：`python \"{ret}\" search \"<关键词>\"`，标来源；未命中就直说没有。",
@@ -141,7 +144,12 @@ def read_head(path: str, limit: int = 4000) -> str:
 
 
 def is_ours(path: str, mark: str) -> bool:
-    return mark in read_head(path)
+    """认新标记，也认改名前的旧标记，避免升级时把自家文件当别人的。"""
+    head = read_head(path)
+    if mark in head:
+        return True
+    legacy = LEGACY_MARKERS.get(mark)
+    return bool(legacy and legacy in head)
 
 
 def backup(path: str) -> str:
@@ -203,6 +211,25 @@ def install_skills(skills_dir: str, force: bool, dry: bool, res: Result) -> None
                     put_file(os.path.join(dst_dir, "references", fn),
                              f.read().replace("<PACK>", PACK), MARK_MD, force, dry, res)
 
+    cleanup_legacy_skills(skills_dir, dry)
+
+
+def cleanup_legacy_skills(skills_dir: str, dry: bool) -> None:
+    """改名前的技能目录：确认是本插件装的就删掉，别留两份。"""
+    for legacy in LEGACY_SKILL_DIRS:
+        d = os.path.join(skills_dir, legacy)
+        marker_file = os.path.join(d, "SKILL.md")
+        if not os.path.isfile(marker_file):
+            continue
+        if not is_ours(marker_file, MARK_MD):
+            print(f"  [保留] {d}（不是本插件装的，未删除）")
+            continue
+        if dry:
+            print(f"  [将删] {d}（改名前的旧技能目录）")
+            continue
+        shutil.rmtree(d, ignore_errors=True)
+        print(f"  [清理] {d}（改名前的旧技能目录）")
+
 
 def install_plugin(plugin_dir: str, force: bool, dry: bool, res: Result) -> None:
     src = os.path.join(PACK, "adapters", "opencode", "memory.ts")
@@ -238,7 +265,7 @@ def print_manual(skills_dir: str | None) -> None:
     print("  其余命令（检索、判分、出题）在任何能跑命令的宿主里都一样。")
     print()
     print("  支持 MCP 的宿主，可以直接把服务端挂上去（无需按宿主写代码）：")
-    print('    {"mcpServers":{"studyloop":{"command":"python",')
+    print('    {"mcpServers":{"recalloop":{"command":"python",')
     print(f'      "args":["{os.path.join(PACK, "core", "scripts", "mcp_server.py")}"]}}}}')
     if skills_dir:
         print(f"  技能目录：{skills_dir}")
@@ -248,9 +275,10 @@ def pick_skills_dir(arg: str | None) -> tuple[str, str]:
     """返回 (目录, 来源说明)。找不到返回 ("", 说明)。"""
     if arg:
         return os.path.abspath(arg), "--skills-dir"
-    env = os.environ.get(ENV_SKILLS)
+    env = os.environ.get(ENV_SKILLS) or os.environ.get(ENV_SKILLS_LEGACY)
     if env:
-        return os.path.abspath(env), f"环境变量 {ENV_SKILLS}"
+        name = ENV_SKILLS if os.environ.get(ENV_SKILLS) else ENV_SKILLS_LEGACY
+        return os.path.abspath(env), f"环境变量 {name}"
     found = candidates()
     if len(found) == 1:
         return found[0], "自动探测（唯一候选）"
@@ -260,7 +288,7 @@ def pick_skills_dir(arg: str | None) -> tuple[str, str]:
 def main() -> int:
     p = argparse.ArgumentParser(
         prog="install_adapters.py",
-        description="把 StudyLoop 装进你指定的技能目录；不认 agent 名字，只认路径。")
+        description="把 Recalloop 装进你指定的技能目录；不认 agent 名字，只认路径。")
     p.add_argument("--skills-dir", default=None, help="技能安装目录（任意宿主的目录都行）")
     p.add_argument("--plugin-dir", default=None, help="可选：把钩子文件放进这个目录（宿主从目录加载插件时用）")
     p.add_argument("--rules-file", default=None, help="可选：把会话契约写进宿主的指令文件（AGENTS.md 等）")
@@ -298,7 +326,7 @@ def main() -> int:
         touched = True
 
     skills_dir = ""
-    if args.skills_dir or os.environ.get(ENV_SKILLS) or (not args.rules_file):
+    if args.skills_dir or os.environ.get(ENV_SKILLS) or os.environ.get(ENV_SKILLS_LEGACY) or (not args.rules_file):
         skills_dir, source = pick_skills_dir(args.skills_dir)
         if skills_dir:
             if not os.path.isdir(skills_dir):

@@ -26,7 +26,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 SCRIPTS = os.path.dirname(os.path.abspath(__file__))
 PACK = os.path.dirname(os.path.dirname(SCRIPTS))
-TEMPLATES = os.path.join(PACK, "core", "skills", "study-loop", "templates")
+TEMPLATES = os.path.join(PACK, "core", "skills", "recalloop", "templates")
 
 KINDS = {
     "exam": {"tpl": "exam.md", "name": "{date}-{slug}.md", "title": "试卷", "title_en": "Exam"},
